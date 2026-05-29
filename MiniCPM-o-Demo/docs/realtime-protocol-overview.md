@@ -1,0 +1,47 @@
+# MiniCPM-o Realtime API 协议
+
+MiniCPM-o 提供两种全双工实时对话模式，通过 WebSocket 协议通信。
+
+## 连接端点
+
+```
+wss://host/v1/realtime?mode={video|audio}
+```
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `mode` | 否 | `video`（默认）或 `audio`，决定会话时长和推荐的输入模态 |
+
+`session_id` 由**服务端**在连接建立后自动生成（格式 `rt_{timestamp_ms}`），通过 `session.created` 事件返回给客户端。客户端不需要也不应该在 URL 中传入 `session_id`。
+
+## 两种模式
+
+| 模式 | 端点示例 | 上行数据 | 会话时长 | 有效对话 |
+|------|---------|---------|---------|---------|
+| **视频双工** | `wss://host/v1/realtime?mode=video` | 音频 + 视频帧 | 5 分钟 | ~90 秒 |
+| **音频双工** | `wss://host/v1/realtime?mode=audio` | 仅音频 | 10 分钟 | ~8 分钟 |
+
+两种模式共享相同的事件命名和消息结构，区别在于：
+- **视频双工**：`input_audio_buffer.append` 建议携带 `video_frames`
+- **音频双工**：`input_audio_buffer.append` 不建议携带 `video_frames`（携带时行为未定义）
+
+模式选择后整个会话期间不能切换。
+
+## 协议文档
+
+- [视频双工协议](video-duplex-protocol.md) — 含视频帧的全双工对话
+- [音频双工协议](audio-duplex-protocol.md) — 纯音频的全双工对话
+- [JSON Schema](realtime-protocol-schema.json) — 机器可读的消息格式定义
+
+## 示例代码
+
+完整的客户端实现示例请参考本仓库的全双工 demo 页面，它们直接使用 Realtime API 协议：
+
+| 页面 | 说明 |
+|------|------|
+| [`static/omni/`](https://github.com/OpenBMB/MiniCPM-o-Demo/tree/realtime-protocol/static/omni) | 视频双工 — 实时音视频对话 |
+| [`static/audio-duplex/`](https://github.com/OpenBMB/MiniCPM-o-Demo/tree/realtime-protocol/static/audio-duplex) | 音频双工 — 实时纯音频对话 |
+
+核心协议封装库：[`static/duplex/lib/realtime-session.js`](https://github.com/OpenBMB/MiniCPM-o-Demo/blob/realtime-protocol/static/duplex/lib/realtime-session.js)
+
+> 仓库地址：<https://github.com/OpenBMB/MiniCPM-o-Demo/tree/realtime-protocol>

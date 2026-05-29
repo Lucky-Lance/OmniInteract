@@ -1,0 +1,28 @@
+
+# pip install -r requirements.txt
+
+# Core ML
+transformers==4.51.0
+accelerate==1.12.0
+safetensors>=0.7.0
+
+# MiniCPM-o 4.5
+minicpmo-utils[all]>=1.0.5
+
+# Web Service
+fastapi>=0.128.0
+uvicorn>=0.40.0
+httpx>=0.28.0
+websockets>=16.0
+python-multipart
+
+# Data / Schema
+pydantic>=2.11.0
+numpy>=2.2.0
+
+# Utilities
+tqdm>=4.67.0
+
+# Dev / Test
+pytest>=9.0.0
+pytest-asyncio>=1.3.0

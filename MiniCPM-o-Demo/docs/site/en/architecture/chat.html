@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Chat Mode - MiniCPM-o 4.5 Docs</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --sidebar-w: 260px;
+  --bg: #fff; --bg-side: #f8f9fa; --bg-code: #f6f8fa;
+  --c1: #24292f; --c2: #57606a;
+  --border: #d0d7de; --accent: #0969da; --nav-active: #ddf4ff;
+}
+body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif; color:var(--c1); line-height:1.6; background:var(--bg); }
+.sidebar-toggle { position:fixed; top:12px; left:12px; z-index:1001; background:var(--bg-side); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:18px; cursor:pointer; display:none; }
+.sidebar { position:fixed; top:0; left:0; width:var(--sidebar-w); height:100vh; overflow-y:auto; background:var(--bg-side); border-right:1px solid var(--border); padding:20px 0; z-index:1000; transition:transform .3s; }
+.sidebar-header { padding:0 20px 16px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+.sidebar-header h2 { font-size:16px; font-weight:600; }
+.sidebar-subtitle { font-size:12px; color:var(--c2); }
+.lang-switch { display:inline-block; margin-top:6px; font-size:12px; color:var(--accent); text-decoration:none; padding:2px 8px; border:1px solid var(--border); border-radius:4px; transition:background .15s; }
+.lang-switch:hover { background:var(--nav-active); text-decoration:none; }
+
+.nav-list { list-style:none; padding:0 8px; }
+.nav-list > li > a { display:block; padding:7px 12px; color:var(--c2); text-decoration:none; font-size:14px; border-radius:6px; transition:background .15s,color .15s; }
+.nav-list > li > a:hover { background:#e8e8e8; color:var(--c1); }
+.nav-list > li > a.active { background:var(--nav-active); color:var(--accent); font-weight:600; }
+
+.nav-group { margin-top:4px; }
+.nav-group-header { display:flex; align-items:center; gap:6px; padding:8px 12px; color:var(--c1); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; cursor:pointer; border-radius:6px; user-select:none; transition:background .15s; }
+.nav-group-header:hover { background:#eaeef2; }
+.nav-group-header::before { content:""; display:inline-block; width:0; height:0; border-left:5px solid var(--c2); border-top:3.5px solid transparent; border-bottom:3.5px solid transparent; transition:transform .2s; transform:rotate(90deg); flex-shrink:0; }
+.nav-group.collapsed .nav-group-header::before { transform:rotate(0); }
+.nav-group-children { list-style:none; margin:0 0 4px 19px; padding:3px 0 3px 13px; border-left:2px solid #e1e4e8; overflow:hidden; max-height:500px; transition:max-height .25s ease,opacity .2s ease,padding .2s ease; opacity:1; }
+.nav-group.collapsed .nav-group-children { max-height:0; opacity:0; padding:0 0 0 13px; }
+.nav-group-children li a { display:block; padding:4px 10px; font-size:13px; color:var(--c2); text-decoration:none; border-radius:4px; transition:background .15s,color .15s; }
+.nav-group-children li a:hover { background:#e8e8e8; color:var(--c1); }
+.nav-group-children li a.active { background:var(--nav-active); color:var(--accent); font-weight:600; }
+
+.content { margin-left:var(--sidebar-w); max-width:900px; padding:40px 48px; }
+article h1 { font-size:28px; font-weight:600; padding-bottom:10px; border-bottom:1px solid var(--border); margin-bottom:20px; }
+article h2 { font-size:22px; font-weight:600; margin-top:32px; margin-bottom:12px; padding-bottom:6px; border-bottom:1px solid #eaecef; }
+article h3 { font-size:18px; font-weight:600; margin-top:24px; margin-bottom:10px; }
+article h4 { font-size:15px; font-weight:600; margin-top:20px; margin-bottom:8px; }
+article p { margin-bottom:14px; }
+article ul,article ol { margin-bottom:14px; padding-left:24px; }
+article li { margin-bottom:4px; }
+article a { color:var(--accent); text-decoration:none; }
+article a:hover { text-decoration:underline; }
+article code { background:var(--bg-code); padding:2px 6px; border-radius:4px; font-size:13px; font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace; }
+article pre { background:var(--bg-code); border:1px solid var(--border); border-radius:6px; padding:16px; overflow-x:auto; margin-bottom:16px; line-height:1.5; }
+article pre code { background:none; padding:0; font-size:13px; }
+article table { width:100%; border-collapse:collapse; margin-bottom:16px; font-size:14px; }
+article th,article td { border:1px solid var(--border); padding:8px 12px; text-align:left; }
+article th { background:var(--bg-code); font-weight:600; }
+article tr:nth-child(even) { background:#f8f9fa; }
+article hr { border:none; border-top:1px solid var(--border); margin:28px 0; }
+article blockquote { border-left:4px solid var(--accent); padding:8px 16px; margin:0 0 16px; color:var(--c2); background:#f8f9fa; border-radius:0 6px 6px 0; }
+article .mermaid { text-align:center; margin:20px 0; }
+footer { margin-top:60px; padding-top:16px; border-top:1px solid var(--border); color:var(--c2); font-size:13px; }
+@media(max-width:768px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); box-shadow:2px 0 8px rgba(0,0,0,.15); }
+  .sidebar-toggle { display:block; }
+  .content { margin-left:0; padding:50px 20px 40px; }
+  .content.shifted { margin-left:var(--sidebar-w); }
+}
+</style>
+</head>
+<body>
+<button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">&#9776;</button>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h2>MiniCPM-o 4.5</h2>
+    <span class="sidebar-subtitle">Documentation</span>
+    <a href="../../zh/architecture/chat.html" class="lang-switch">中文</a>
+  </div>
+  <ul class="nav-list">
+    <li><a href="../index.html">Home</a></li>
+    <li class="nav-group">
+      <span class="nav-group-header">Architecture</span>
+      <ul class="nav-group-children">
+        <li><a href="../architecture/index.html">Overview</a></li>
+        <li><a href="../architecture/chat.html" class="active">Chat Mode</a></li>
+        <li><a href="../architecture/half-duplex.html">Half-Duplex Mode</a></li>
+        <li><a href="../architecture/duplex.html">Duplex Mode</a></li>
+        <li><a href="../architecture/internals.html">Internals</a></li>
+      </ul>
+    </li>
+    <li><a href="../model.html">Model</a></li>
+    <li><a href="../compile.html">torch.compile</a></li>
+    <li class="nav-group">
+      <span class="nav-group-header">Frontend</span>
+      <ul class="nav-group-children">
+        <li><a href="../frontend/index.html">Overview</a></li>
+        <li><a href="../frontend/pages.html">Pages & Routes</a></li>
+        <li><a href="../frontend/audio.html">Audio</a></li>
+        <li><a href="../frontend/duplex-session.html">Duplex Session</a></li>
+        <li><a href="../frontend/components.html">UI Components</a></li>
+      </ul>
+    </li>
+    <li class="nav-group">
+      <span class="nav-group-header">API Reference</span>
+      <ul class="nav-group-children">
+        <li><a href="../api/chat.html">Chat Mode</a></li>
+        <li><a href="../api/half-duplex.html">Half-Duplex Mode</a></li>
+        <li><a href="../api/duplex.html">Duplex Mode</a></li>
+        <li><a href="../api.html">Common</a></li>
+      </ul>
+    </li>
+    <li><a href="../deployment.html">Deployment</a></li>
+  </ul>
+</nav>
+<main class="content" id="content">
+  <article><h1 id="chat-mode-details">Chat Mode Details</h1>
+<p>The core inference mode behind the Turn-based Chat page. Communicates via the <code>/ws/chat</code> WebSocket endpoint, supporting both <strong>streaming</strong> and <strong>non-streaming</strong> response modes.</p>
+<h2 id="in-one-sentence">In One Sentence</h2>
+<blockquote>
+<p>Feed all history messages into the model at once (<strong>Prefill</strong>), then let the model generate a reply based on the existing context (<strong>Generate</strong>).</p>
+</blockquote>
+<h2 id="overall-flow">Overall Flow</h2>
+<h3 id="simplified-view">Simplified View</h3>
+<p>Only two steps between the frontend and the model:</p>
+<pre class="mermaid">
+sequenceDiagram
+    participant FE as Frontend
+    participant MD as Model
+
+    FE->>MD: 1. Prefill: all messages
+    MD-->>FE: 2. Generate: reply (text + optional audio)
+</pre>
+
+<h3 id="detailed-view">Detailed View</h3>
+<p>Full flow with the intermediate layers (Gateway passthrough proxy + Worker dispatch):</p>
+<pre class="mermaid">
+sequenceDiagram
+    participant FE as Frontend
+    participant GW as Gateway
+    participant WK as Worker
+    participant MD as Model
+
+    FE->>GW: WebSocket /ws/chat
+    GW->>WK: WebSocket passthrough
+    FE->>WK: {messages, streaming, tts, ...}
+
+    WK->>MD: Prefill (fill all messages at once)
+    MD-->>WK: KV Cache ready
+    WK-->>FE: prefill_done
+
+    alt Streaming response
+        loop chunk-by-chunk generation
+            MD-->>WK: text chunk + audio chunk
+            WK-->>FE: {type: "chunk", text_delta, audio_data}
+        end
+    else Non-streaming response
+        MD-->>WK: complete text + complete audio
+    end
+
+    WK-->>FE: {type: "done", text, generated_tokens}
+</pre>
+
+<h2 id="prefill-stage">Prefill Stage</h2>
+<p>Prefill fills the entire conversation history (system prompt + multi-turn user/assistant messages) into the model's <strong>KV Cache</strong> in one shot.</p>
+<p>Key behaviors:
+- Uses <code>apply_chat_template</code> to build the prompt, but <strong>without generation prompt</strong> (<code>add_generation_prompt=False</code>)
+- The generation prompt (<code>&lt;|im_start|&gt;assistant\n</code>) is injected during the Generate stage
+- Supports multimodal input: text, images, audio, video</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Pseudocode</span>
+<span class="n">prompt</span> <span class="o">=</span> <span class="n">tokenizer</span><span class="o">.</span><span class="n">apply_chat_template</span><span class="p">(</span><span class="n">msgs</span><span class="p">,</span> <span class="n">add_generation_prompt</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="n">processor</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">audios</span><span class="p">)</span>
+<span class="n">inputs_embeds</span> <span class="o">=</span> <span class="n">get_vllm_embedding</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>   <span class="c1"># vision encoding</span>
+<span class="n">inputs_embeds</span> <span class="o">=</span> <span class="n">get_omni_embedding</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>   <span class="c1"># audio encoding</span>
+
+<span class="c1"># Fill KV Cache</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="n">llm</span><span class="p">(</span><span class="n">inputs_embeds</span><span class="o">=</span><span class="n">inputs_embeds</span><span class="p">,</span> <span class="n">use_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">kv_cache</span> <span class="o">=</span> <span class="n">outputs</span><span class="o">.</span><span class="n">past_key_values</span>
+</code></pre></div>
+
+<h2 id="generate-stage">Generate Stage</h2>
+<p>Generate produces a reply based on the filled KV Cache. It first injects the bos string, then branches:</p>
+<h3 id="bos-string-injection">Bos String Injection</h3>
+<div class="codehilite"><pre><span></span><code><span class="err">&lt;</span>|im_end|&gt;\n<span class="err">&lt;</span>|im_start|&gt;assistant\n<span class="nt">&lt;think&gt;</span>\n\n<span class="nt">&lt;/think&gt;</span>\n\n<span class="err">&lt;</span>|tts_bos|&gt;
+</code></pre></div>
+
+<p>This is consistent with the model's behavior in <code>chat()</code> and <code>streaming_generate()</code>.</p>
+<h3 id="non-streaming-generation">Non-streaming Generation</h3>
+<p>Uses HuggingFace's standard <code>llm.generate()</code> API:</p>
+<ol>
+<li>bos string → embedding → KV Cache forward pass</li>
+<li><code>llm.generate(past_key_values=kv_cache, ...)</code> generates the complete sequence</li>
+<li>Decode text</li>
+<li>Optional: call <code>_generate_speech_non_streaming()</code> for TTS audio</li>
+</ol>
+<p>Best for: short replies, scenarios that don't require real-time feedback.</p>
+<h3 id="streaming-generation">Streaming Generation</h3>
+<p>Uses the model's internal <code>streaming_generate()</code> method:</p>
+<ol>
+<li>bos string is auto-injected</li>
+<li>Generates in groups of 10 tokens (<code>ChunkPrefillChunkGenerate</code>)</li>
+<li>Each token group is fed to TTS to produce an audio chunk</li>
+<li>Yields (waveform_chunk, text_delta) incrementally</li>
+</ol>
+<p>Best for: long replies, scenarios that need real-time token-by-token display.</p>
+<h2 id="websocket-protocol">WebSocket Protocol</h2>
+<h3 id="endpoint">Endpoint</h3>
+<div class="codehilite"><pre><span></span><code>wss://host/ws/chat
+</code></pre></div>
+
+<h3 id="request-format">Request Format</h3>
+<p>Send one JSON message after connecting:</p>
+<div class="codehilite"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;messages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;system&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;text&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">}]},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;user&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Hello&quot;</span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;streaming&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;generation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;max_new_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">256</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;length_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.1</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;tts&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;ref_audio_data&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;base64&gt;&quot;</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;image&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;max_slice_nums&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;omni_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>messages</code></td>
+<td>Complete message history (including system prompt)</td>
+</tr>
+<tr>
+<td><code>streaming</code></td>
+<td><code>true</code> for streaming / <code>false</code> for non-streaming</td>
+</tr>
+<tr>
+<td><code>generation</code></td>
+<td>Generation parameters (max_new_tokens, length_penalty, etc.)</td>
+</tr>
+<tr>
+<td><code>tts</code></td>
+<td>Voice Response config (enabled, ref_audio_data)</td>
+</tr>
+<tr>
+<td><code>omni_mode</code></td>
+<td>Set to <code>true</code> for video input</td>
+</tr>
+</tbody>
+</table>
+<h3 id="response-messages">Response Messages</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Fields</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prefill_done</code></td>
+<td><code>input_tokens</code></td>
+<td>Prefill complete, returns input token count</td>
+</tr>
+<tr>
+<td><code>chunk</code></td>
+<td><code>text_delta</code>, <code>audio_data</code></td>
+<td>One streaming chunk (streaming=true only)</td>
+</tr>
+<tr>
+<td><code>done</code></td>
+<td><code>text</code>, <code>generated_tokens</code>, <code>input_tokens</code>, <code>audio_data</code></td>
+<td>Generation complete</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>error</code></td>
+<td>Error message</td>
+</tr>
+</tbody>
+</table>
+<h2 id="call-chain">Call Chain</h2>
+<div class="codehilite"><pre><span></span><code>Frontend turnbased.html
+  └─ WebSocket /ws/chat
+      └─ Gateway (WS passthrough proxy)
+          └─ Worker /ws/chat
+              ├─ chat_prefill()
+              │   └─ ChatView.prefill()
+              │       └─ model.non_streaming_prefill()
+              ├─ TTS init
+              │   └─ model.init_token2wav_cache()
+              └─ Generation
+                  ├─ Streaming: chat_streaming_generate()
+                  │   └─ ChatView.streaming_generate()
+                  │       └─ model.streaming_generate()
+                  └─ Non-streaming: chat_non_streaming_generate()
+                      └─ ChatView.generate()
+                          └─ model.non_streaming_generate()
+</code></pre></div>
+
+<h2 id="voice-response">Voice Response</h2>
+<p>The frontend provides a "Voice Response" toggle:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>On</td>
+<td>Generates voice reply + text; automatically suppresses special characters (Markdown <code>*</code>, <code>#</code>, code symbols, etc.) to ensure text is suitable for voice playback</td>
+</tr>
+<tr>
+<td>Off</td>
+<td>Text-only generation; no character suppression, Markdown, code, etc. can be freely output</td>
+</tr>
+</tbody>
+</table>
+<p>Technical detail: The <code>suppress_forbidden_tokens</code> parameter in <code>ChunkPrefillChunkGenerate.chunk_generate()</code> is controlled by <code>generate_audio</code>.</p>
+<h2 id="video-input">Video Input</h2>
+<p>Chat mode supports video input (<code>VideoContent</code>):</p>
+<ol>
+<li>Frontend uploads a video file → Base64 encoding</li>
+<li>Processor decodes to a temp file → <code>get_video_frame_audio_segments()</code> extracts frames and audio</li>
+<li>Frames and audio are interleaved (frame, audio, [stacked_frame], ...) and fed to the model</li>
+<li>Request automatically sets <code>omni_mode: true</code>, <code>max_slice_nums: 1</code></li>
+</ol></article>
+  <footer><p>MiniCPM-o 4.5 PyTorch Simple Demo &mdash; Generated by build_docs.py</p></footer>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+mermaid.initialize({startOnLoad:true,theme:'default',securityLevel:'loose'});
+</script>
+<script>
+hljs.highlightAll();
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('content').classList.toggle('shifted');}
+document.querySelectorAll('.nav-group-header').forEach(function(h){h.addEventListener('click',function(){this.parentElement.classList.toggle('collapsed');});});
+document.addEventListener('click',function(e){var s=document.getElementById('sidebar'),t=document.querySelector('.sidebar-toggle');if(window.innerWidth<=768&&s.classList.contains('open')&&!s.contains(e.target)&&!t.contains(e.target)){s.classList.remove('open');document.getElementById('content').classList.remove('shifted');}});
+</script>
+</body>
+</html>

@@ -1,0 +1,358 @@
+/* ================================================================
+   faq-sidebar.css — VS Code-style embedded FAQ sidebar
+   ================================================================ */
+
+/* ── layout wrapper ── */
+.faq-layout-wrapper {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+.faq-main-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* ── sidebar expanded ── */
+.faq-sidebar {
+    position: relative;
+    width: 20%;
+    min-width: 280px;
+    max-width: 400px;
+    height: 100vh;
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    background: #ffffff;
+    border-left: 1px solid #e8e6e1;
+    overflow: hidden;
+}
+
+/* ── sidebar collapsed ── */
+.faq-sidebar.collapsed {
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+}
+.faq-sidebar.collapsed .faq-sidebar-inner { display: none; }
+.faq-sidebar.collapsed .faq-collapse-label { opacity: 1; }
+
+/* ================================================================
+   Collapse strip
+   ================================================================ */
+.faq-collapse-strip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 36px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+    border-right: 1px solid #eee;
+    background: #fafaf8;
+}
+.faq-collapse-strip:hover {
+    background: #f0efec;
+}
+
+.faq-collapse-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0;
+}
+
+.faq-collapse-chevron {
+    color: #aaa;
+    flex-shrink: 0;
+}
+.faq-collapse-strip:hover .faq-collapse-chevron { color: #555; }
+.faq-sidebar.collapsed .faq-collapse-chevron { transform: rotate(180deg); }
+
+.faq-collapse-label {
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    font-size: 11px;
+    font-weight: 700;
+    color: #ccc;
+    letter-spacing: 2px;
+    user-select: none;
+    opacity: 0;
+}
+.faq-sidebar.collapsed .faq-collapse-label { opacity: 1; }
+.faq-collapse-strip:hover .faq-collapse-label { color: #888; }
+
+/* ================================================================
+   Sidebar inner
+   ================================================================ */
+.faq-sidebar-inner {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    margin-left: 36px;
+}
+
+/* ── header ── */
+.faq-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+    background: #fafaf8;
+}
+.faq-header-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+}
+.faq-header-title::before {
+    content: '?';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #555, #333);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+/* ── language toggle ── */
+.faq-lang-toggle {
+    display: flex;
+    background: #f0efec;
+    border-radius: 8px;
+    padding: 2px;
+    flex-shrink: 0;
+    gap: 2px;
+}
+.faq-lang-btn {
+    background: transparent;
+    border: none;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #999;
+    cursor: pointer;
+    line-height: 1.3;
+    border-radius: 6px;
+}
+.faq-lang-btn.active {
+    background: #fff;
+    color: #333;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.faq-lang-btn:not(.active):hover {
+    color: #555;
+}
+
+/* ── scrollable body ── */
+.faq-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 18px 32px;
+    overscroll-behavior: contain;
+}
+.faq-body::-webkit-scrollbar { width: 5px; }
+.faq-body::-webkit-scrollbar-track { background: transparent; }
+.faq-body::-webkit-scrollbar-thumb {
+    background: #ddd;
+    border-radius: 3px;
+}
+.faq-body::-webkit-scrollbar-thumb:hover { background: #ccc; }
+
+/* ================================================================
+   Markdown rendered content
+   ================================================================ */
+
+/* ── h1 top title ── */
+.faq-content h1 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 14px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    letter-spacing: 0.3px;
+}
+
+/* ── h2 question cards ── */
+.faq-content h2 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin: 8px 0 0 0;
+    padding: 10px 30px 10px 12px;
+    background: #f7f7f5;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    line-height: 1.55;
+}
+.faq-content h2:first-child { margin-top: 0; }
+.faq-content h2:hover {
+    background: #f0efec;
+    border-color: #e0deda;
+}
+.faq-content h2.faq-open {
+    background: #f0efec;
+    border-color: #ddd;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-color: transparent;
+}
+.faq-content h2::after {
+    content: '';
+    position: absolute;
+    right: 11px;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid #aaa;
+    border-bottom: 1.5px solid #aaa;
+    transform: translateY(-50%) rotate(-45deg);
+}
+.faq-content h2.faq-open::after {
+    transform: translateY(-65%) rotate(45deg);
+}
+.faq-content h2:hover::after {
+    border-color: #666;
+}
+
+/* ── answer area ── */
+.faq-answer {
+    display: none;
+    padding: 12px 14px 14px;
+    background: #fafaf8;
+    border: 1px solid #eee;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    margin-bottom: 2px;
+}
+.faq-answer.faq-show {
+    display: block;
+}
+
+/* ── h3 ── */
+.faq-content h3 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin: 10px 0 5px 0;
+}
+
+/* ── paragraphs ── */
+.faq-content p {
+    font-size: 12.5px;
+    line-height: 1.8;
+    color: #555;
+    margin: 0 0 8px 0;
+}
+
+/* ── lists ── */
+.faq-content ul, .faq-content ol {
+    margin: 4px 0 10px 0;
+    padding-left: 18px;
+}
+.faq-content li {
+    font-size: 12.5px;
+    line-height: 1.8;
+    color: #555;
+    margin-bottom: 2px;
+}
+.faq-content li::marker { color: #ccc; }
+
+/* ── inline code ── */
+.faq-content code {
+    font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+    font-size: 11px;
+    background: #f0efec;
+    padding: 2px 5px;
+    border-radius: 4px;
+    color: #c0392b;
+}
+
+/* ── code blocks ── */
+.faq-content pre {
+    margin: 6px 0 10px 0;
+    padding: 10px 14px;
+    background: #f5f5f2;
+    border-radius: 8px;
+    overflow-x: auto;
+}
+.faq-content pre code {
+    background: none;
+    padding: 0;
+    color: #2d2d2d;
+    font-size: 11px;
+    line-height: 1.7;
+}
+
+/* ── blockquotes ── */
+.faq-content blockquote {
+    margin: 6px 0 10px 0;
+    padding: 8px 14px;
+    border-left: 3px solid #e2c6a8;
+    background: #fdfbf8;
+    border-radius: 0 8px 8px 0;
+    font-size: 12.5px;
+    color: #777;
+    line-height: 1.7;
+}
+.faq-content blockquote p { margin: 0; color: inherit; }
+
+/* ── misc ── */
+.faq-content hr {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 14px 0;
+}
+.faq-content strong {
+    font-weight: 600;
+    color: #333;
+}
+.faq-content a {
+    color: #4a8fe7;
+    text-decoration: none;
+}
+.faq-content a:hover { text-decoration: underline; }
+
+/* ================================================================
+   Responsive
+   ================================================================ */
+@media (max-width: 1000px) {
+    .faq-sidebar { min-width: 240px; }
+}
+@media (max-width: 700px) {
+    .faq-sidebar:not(.collapsed) {
+        position: fixed;
+        right: 0; top: 0;
+        width: 85%;
+        max-width: none;
+        z-index: 1000;
+        box-shadow: -6px 0 30px rgba(0,0,0,0.1);
+    }
+}

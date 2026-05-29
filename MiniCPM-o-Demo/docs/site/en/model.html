@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Model - MiniCPM-o 4.5 Docs</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --sidebar-w: 260px;
+  --bg: #fff; --bg-side: #f8f9fa; --bg-code: #f6f8fa;
+  --c1: #24292f; --c2: #57606a;
+  --border: #d0d7de; --accent: #0969da; --nav-active: #ddf4ff;
+}
+body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif; color:var(--c1); line-height:1.6; background:var(--bg); }
+.sidebar-toggle { position:fixed; top:12px; left:12px; z-index:1001; background:var(--bg-side); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:18px; cursor:pointer; display:none; }
+.sidebar { position:fixed; top:0; left:0; width:var(--sidebar-w); height:100vh; overflow-y:auto; background:var(--bg-side); border-right:1px solid var(--border); padding:20px 0; z-index:1000; transition:transform .3s; }
+.sidebar-header { padding:0 20px 16px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+.sidebar-header h2 { font-size:16px; font-weight:600; }
+.sidebar-subtitle { font-size:12px; color:var(--c2); }
+.lang-switch { display:inline-block; margin-top:6px; font-size:12px; color:var(--accent); text-decoration:none; padding:2px 8px; border:1px solid var(--border); border-radius:4px; transition:background .15s; }
+.lang-switch:hover { background:var(--nav-active); text-decoration:none; }
+
+.nav-list { list-style:none; padding:0 8px; }
+.nav-list > li > a { display:block; padding:7px 12px; color:var(--c2); text-decoration:none; font-size:14px; border-radius:6px; transition:background .15s,color .15s; }
+.nav-list > li > a:hover { background:#e8e8e8; color:var(--c1); }
+.nav-list > li > a.active { background:var(--nav-active); color:var(--accent); font-weight:600; }
+
+.nav-group { margin-top:4px; }
+.nav-group-header { display:flex; align-items:center; gap:6px; padding:8px 12px; color:var(--c1); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; cursor:pointer; border-radius:6px; user-select:none; transition:background .15s; }
+.nav-group-header:hover { background:#eaeef2; }
+.nav-group-header::before { content:""; display:inline-block; width:0; height:0; border-left:5px solid var(--c2); border-top:3.5px solid transparent; border-bottom:3.5px solid transparent; transition:transform .2s; transform:rotate(90deg); flex-shrink:0; }
+.nav-group.collapsed .nav-group-header::before { transform:rotate(0); }
+.nav-group-children { list-style:none; margin:0 0 4px 19px; padding:3px 0 3px 13px; border-left:2px solid #e1e4e8; overflow:hidden; max-height:500px; transition:max-height .25s ease,opacity .2s ease,padding .2s ease; opacity:1; }
+.nav-group.collapsed .nav-group-children { max-height:0; opacity:0; padding:0 0 0 13px; }
+.nav-group-children li a { display:block; padding:4px 10px; font-size:13px; color:var(--c2); text-decoration:none; border-radius:4px; transition:background .15s,color .15s; }
+.nav-group-children li a:hover { background:#e8e8e8; color:var(--c1); }
+.nav-group-children li a.active { background:var(--nav-active); color:var(--accent); font-weight:600; }
+
+.content { margin-left:var(--sidebar-w); max-width:900px; padding:40px 48px; }
+article h1 { font-size:28px; font-weight:600; padding-bottom:10px; border-bottom:1px solid var(--border); margin-bottom:20px; }
+article h2 { font-size:22px; font-weight:600; margin-top:32px; margin-bottom:12px; padding-bottom:6px; border-bottom:1px solid #eaecef; }
+article h3 { font-size:18px; font-weight:600; margin-top:24px; margin-bottom:10px; }
+article h4 { font-size:15px; font-weight:600; margin-top:20px; margin-bottom:8px; }
+article p { margin-bottom:14px; }
+article ul,article ol { margin-bottom:14px; padding-left:24px; }
+article li { margin-bottom:4px; }
+article a { color:var(--accent); text-decoration:none; }
+article a:hover { text-decoration:underline; }
+article code { background:var(--bg-code); padding:2px 6px; border-radius:4px; font-size:13px; font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace; }
+article pre { background:var(--bg-code); border:1px solid var(--border); border-radius:6px; padding:16px; overflow-x:auto; margin-bottom:16px; line-height:1.5; }
+article pre code { background:none; padding:0; font-size:13px; }
+article table { width:100%; border-collapse:collapse; margin-bottom:16px; font-size:14px; }
+article th,article td { border:1px solid var(--border); padding:8px 12px; text-align:left; }
+article th { background:var(--bg-code); font-weight:600; }
+article tr:nth-child(even) { background:#f8f9fa; }
+article hr { border:none; border-top:1px solid var(--border); margin:28px 0; }
+article blockquote { border-left:4px solid var(--accent); padding:8px 16px; margin:0 0 16px; color:var(--c2); background:#f8f9fa; border-radius:0 6px 6px 0; }
+article .mermaid { text-align:center; margin:20px 0; }
+footer { margin-top:60px; padding-top:16px; border-top:1px solid var(--border); color:var(--c2); font-size:13px; }
+@media(max-width:768px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); box-shadow:2px 0 8px rgba(0,0,0,.15); }
+  .sidebar-toggle { display:block; }
+  .content { margin-left:0; padding:50px 20px 40px; }
+  .content.shifted { margin-left:var(--sidebar-w); }
+}
+</style>
+</head>
+<body>
+<button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">&#9776;</button>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h2>MiniCPM-o 4.5</h2>
+    <span class="sidebar-subtitle">Documentation</span>
+    <a href="../zh/model.html" class="lang-switch">中文</a>
+  </div>
+  <ul class="nav-list">
+    <li><a href="index.html">Home</a></li>
+    <li class="nav-group">
+      <span class="nav-group-header">Architecture</span>
+      <ul class="nav-group-children">
+        <li><a href="architecture/index.html">Overview</a></li>
+        <li><a href="architecture/chat.html">Chat Mode</a></li>
+        <li><a href="architecture/half-duplex.html">Half-Duplex Mode</a></li>
+        <li><a href="architecture/duplex.html">Duplex Mode</a></li>
+        <li><a href="architecture/internals.html">Internals</a></li>
+      </ul>
+    </li>
+    <li><a href="model.html" class="active">Model</a></li>
+    <li><a href="compile.html">torch.compile</a></li>
+    <li class="nav-group">
+      <span class="nav-group-header">Frontend</span>
+      <ul class="nav-group-children">
+        <li><a href="frontend/index.html">Overview</a></li>
+        <li><a href="frontend/pages.html">Pages & Routes</a></li>
+        <li><a href="frontend/audio.html">Audio</a></li>
+        <li><a href="frontend/duplex-session.html">Duplex Session</a></li>
+        <li><a href="frontend/components.html">UI Components</a></li>
+      </ul>
+    </li>
+    <li class="nav-group">
+      <span class="nav-group-header">API Reference</span>
+      <ul class="nav-group-children">
+        <li><a href="api/chat.html">Chat Mode</a></li>
+        <li><a href="api/half-duplex.html">Half-Duplex Mode</a></li>
+        <li><a href="api/duplex.html">Duplex Mode</a></li>
+        <li><a href="api.html">Common</a></li>
+      </ul>
+    </li>
+    <li><a href="deployment.html">Deployment</a></li>
+  </ul>
+</nav>
+<main class="content" id="content">
+  <article><h1 id="minicpmo45-model-module-details">MiniCPMO45 Model Module Details</h1>
+<p>MiniCPMO45 is the system's core model module, implementing multimodal large language model inference capabilities with support for text, image, audio, and video input, as well as text and audio output.</p>
+<h2 id="module-structure">Module Structure</h2>
+<div class="codehilite"><pre><span></span><code><span class="nx">MiniCPMO45</span><span class="o">/</span>
+<span class="err">├──</span><span class="w"> </span><span class="nx">configuration_minicpmo</span><span class="p">.</span><span class="nx">py</span><span class="w">       </span><span class="err">#</span><span class="w"> </span><span class="nx">Model</span><span class="w"> </span><span class="nx">configuration</span><span class="w"> </span><span class="nx">definitions</span>
+<span class="err">├──</span><span class="w"> </span><span class="nx">modeling_minicpmo</span><span class="p">.</span><span class="nx">py</span><span class="w">            </span><span class="err">#</span><span class="w"> </span><span class="nx">Main</span><span class="w"> </span><span class="nx">model</span><span class="w"> </span><span class="nx">implementation</span>
+<span class="err">├──</span><span class="w"> </span><span class="nx">modeling_minicpmo_unified</span><span class="p">.</span><span class="nx">py</span><span class="w">    </span><span class="err">#</span><span class="w"> </span><span class="nx">Unified</span><span class="w"> </span><span class="nx">model</span><span class="w"> </span><span class="p">(</span><span class="nx">supports</span><span class="w"> </span><span class="nx">hot</span><span class="o">-</span><span class="nx">switching</span><span class="p">)</span>
+<span class="err">├──</span><span class="w"> </span><span class="nx">modeling_navit_siglip</span><span class="p">.</span><span class="nx">py</span><span class="w">        </span><span class="err">#</span><span class="w"> </span><span class="nx">SigLIP</span><span class="w"> </span><span class="nx">vision</span><span class="w"> </span><span class="nx">encoder</span>
+<span class="err">├──</span><span class="w"> </span><span class="nx">processing_minicpmo</span><span class="p">.</span><span class="nx">py</span><span class="w">          </span><span class="err">#</span><span class="w"> </span><span class="nx">Multimodal</span><span class="w"> </span><span class="nx">processor</span>
+<span class="err">├──</span><span class="w"> </span><span class="nx">tokenization_minicpmo_fast</span><span class="p">.</span><span class="nx">py</span><span class="w">   </span><span class="err">#</span><span class="w"> </span><span class="nx">Fast</span><span class="w"> </span><span class="nx">tokenizer</span>
+<span class="err">├──</span><span class="w"> </span><span class="nx">utils</span><span class="p">.</span><span class="nx">py</span><span class="w">                        </span><span class="err">#</span><span class="w"> </span><span class="nx">Utility</span><span class="w"> </span><span class="nx">functions</span>
+<span class="err">├──</span><span class="w"> </span><span class="nx">tokenizer_config</span><span class="p">.</span><span class="nx">json</span><span class="w">           </span><span class="err">#</span><span class="w"> </span><span class="nx">Tokenizer</span><span class="w"> </span><span class="nx">configuration</span>
+<span class="err">├──</span><span class="w"> </span><span class="nx">generation_config</span><span class="p">.</span><span class="nx">json</span><span class="w">          </span><span class="err">#</span><span class="w"> </span><span class="nx">Generation</span><span class="w"> </span><span class="nx">configuration</span>
+<span class="err">├──</span><span class="w"> </span><span class="nx">preprocessor_config</span><span class="p">.</span><span class="nx">json</span><span class="w">        </span><span class="err">#</span><span class="w"> </span><span class="nx">Preprocessor</span><span class="w"> </span><span class="nx">configuration</span>
+<span class="err">├──</span><span class="w"> </span><span class="nx">special_tokens_map</span><span class="p">.</span><span class="nx">json</span><span class="w">         </span><span class="err">#</span><span class="w"> </span><span class="nx">Special</span><span class="w"> </span><span class="nx">token</span><span class="w"> </span><span class="nx">mapping</span>
+<span class="err">└──</span><span class="w"> </span><span class="nx">added_tokens</span><span class="p">.</span><span class="nx">json</span><span class="w">               </span><span class="err">#</span><span class="w"> </span><span class="nx">Extended</span><span class="w"> </span><span class="nx">tokens</span>
+</code></pre></div>
+
+<h2 id="multimodal-architecture-overview">Multimodal Architecture Overview</h2>
+<pre class="mermaid">
+graph TB
+    subgraph inputLayer [Input Layer]
+        TextIn["Text Input"]
+        ImageIn["Image Input"]
+        AudioIn["Audio Input\n(16kHz)"]
+        VideoIn["Video Input\n(auto-extract frames+audio)"]
+    end
+
+    subgraph encoderLayer [Encoder Layer]
+        Tokenizer["Qwen2 Tokenizer"]
+        VPM["SigLIP Vision Encoder\n(ViT)"]
+        Resampler["Resampler\n(Perceiver)"]
+        APM["Whisper Audio Encoder"]
+        AudioProj["Audio Projection\nMultiModalProjector"]
+    end
+
+    subgraph fusionLayer [Fusion Layer]
+        Embedding["Multimodal Embedding Fusion"]
+    end
+
+    subgraph llmLayer [Language Model]
+        LLM["Qwen3 LLM Backbone\n(Causal LM)"]
+    end
+
+    subgraph outputLayer [Output Layer]
+        TextOut["Text Output"]
+        TTSBlock["TTS Module"]
+        T2W["Token2Wav"]
+        AudioOut["Audio Output\n(24kHz)"]
+    end
+
+    TextIn --> Tokenizer --> Embedding
+    ImageIn --> VPM --> Resampler --> Embedding
+    AudioIn --> APM --> AudioProj --> Embedding
+    VideoIn -->|"frames"| VPM
+    VideoIn -->|"audio segments"| APM
+    Embedding --> LLM
+    LLM --> TextOut
+    LLM --> TTSBlock
+    TTSBlock --> T2W --> AudioOut
+</pre>
+
+<hr />
+<h2 id="core-model-structure">Core Model Structure</h2>
+<p><code>MiniCPMO</code> is the central class of the system (inherits from <code>Qwen3PreTrainedModel</code>), composed of 6 sub-modules, each responsible for a specific modality or function:</p>
+<ul>
+<li><strong><code>llm</code></strong> — <code>Qwen3ForCausalLM</code>, the language model backbone that performs causal reasoning and text generation on fused multimodal embeddings.</li>
+<li><strong><code>vpm</code></strong> — <code>SiglipVisionTransformer</code>, the vision encoder that encodes image patches into visual feature sequences.</li>
+<li><strong><code>resampler</code></strong> — <code>Resampler</code> (Perceiver-style cross-attention) that compresses variable-length visual features into a fixed number of query vectors.</li>
+<li><strong><code>apm</code></strong> — <code>MiniCPMWhisperEncoder</code>, the audio encoder (based on Whisper) that encodes mel spectrograms into audio features.</li>
+<li><strong><code>audio_projection_layer</code></strong> — <code>MultiModalProjector</code> (Linear → ReLU → Linear) that maps audio features into the LLM's embedding space.</li>
+<li><strong><code>tts</code></strong> — <code>MiniCPMTTS</code>, the text-to-speech module that converts LLM hidden states into audio tokens.</li>
+</ul>
+<p>Each sub-module can be independently enabled or disabled via the <code>init_vision</code> / <code>init_audio</code> / <code>init_tts</code> configuration flags.</p>
+<h3 id="unified-model-and-mode-switching">Unified Model and Mode Switching</h3>
+<p>The <code>MiniCPMO</code> in <code>modeling_minicpmo_unified.py</code> extends the base model with <strong>unified mode management</strong>, supporting hot-switching between three modes via the <code>ProcessorMode</code> enum:</p>
+<ul>
+<li><strong><code>CHAT</code></strong> — Standard multimodal chat with image/audio/video input and text or speech output.</li>
+<li><strong><code>STREAMING</code></strong> — Streaming chat with chunk-by-chunk input and streaming output.</li>
+<li><strong><code>DUPLEX</code></strong> — Full-duplex real-time conversation with simultaneous listening and speaking.</li>
+</ul>
+<p>Switching is done via <code>set_mode(mode)</code>, which only resets session state (KV Cache, Token2Wav cache, etc.) without reloading model weights, making mode transitions extremely lightweight.</p>
+<hr />
+<h2 id="input-encoding">Input Encoding</h2>
+<h3 id="text-encoding">Text Encoding</h3>
+<p>Text input is tokenized by the Qwen2 Tokenizer, then converted to embedding vectors via <code>llm.model.embed_tokens</code>. An optional <code>scale_emb</code> scaling factor is applied after embedding.</p>
+<h3 id="vision-encoding-image-and-video">Vision Encoding (Image and Video)</h3>
+<p>Image processing follows three steps:</p>
+<ol>
+<li><strong>Image Slicing</strong> (<code>MiniCPMVImageProcessor</code>) — Large images are sliced into multiple patches according to <code>MiniCPMVSliceConfig</code> (up to <code>max_slice_nums=9</code> patches, each <code>448x448</code>), while retaining a global thumbnail. This enables the model to handle high-resolution images.</li>
+<li><strong>VPM Encoding</strong> (<code>SiglipVisionTransformer</code>) — Each patch is encoded by the SigLIP ViT. The ViT consists of <code>SiglipVisionEmbeddings</code> (Conv2d patch embedding + positional encoding) and multi-layer <code>SiglipEncoder</code> (multi-head self-attention + FFN), with Flash Attention 2 support. The output is a variable-length patch feature sequence.</li>
+<li><strong>Resampler Compression</strong> (<code>Resampler</code>) — Learnable query vectors (64 by default) perform cross-attention over the VPM output, compressing variable-length visual features into a fixed length. Positional information is injected via 2D sincos positional encoding. Output shape: <code>(num_queries, embed_dim)</code>.</li>
+</ol>
+<p><strong>Video</strong> is decomposed into a frame sequence + audio segments. Frames follow the vision encoding path; audio segments follow the audio encoding path.</p>
+<h3 id="audio-encoding">Audio Encoding</h3>
+<p>Audio processing follows three steps:</p>
+<ol>
+<li><strong>Mel Spectrogram Extraction</strong> (<code>MiniCPMAAudioProcessor</code>) — 16kHz audio input is converted to 80-dimensional mel spectrogram features.</li>
+<li><strong>APM Encoding</strong> (<code>MiniCPMWhisperEncoder</code>) — A Whisper-based encoder that first downsamples via two 1D convolutions (Conv1 stride=1 → GELU → Conv2 stride=2), then processes through multi-layer Transformer encoder layers. Supports KV Cache for streaming audio encoding, with optional context overlap via <code>prefix_extra_frames</code> / <code>suffix_extra_frames</code>.</li>
+<li><strong>Projection + Pooling</strong> — <code>MultiModalProjector</code> (Linear → ReLU → Linear) maps audio features to the LLM embedding dimension, followed by <code>AvgPool1d</code> (stride <code>audio_pool_step=5</code>) to further compress the sequence length.</li>
+</ol>
+<hr />
+<h2 id="multimodal-embedding-fusion">Multimodal Embedding Fusion</h2>
+<p>After each modality is encoded, they are merged into a unified embedding sequence through two steps:</p>
+<ol>
+<li><strong>Vision Fusion</strong> (<code>get_vllm_embedding</code>) — Vision placeholder tokens are reserved in the text sequence. Using <code>image_bound</code> (which records the start and end positions of each image placeholder), the corresponding text embeddings are <strong>replaced</strong> with the Resampler's visual embeddings via a scatter operation.</li>
+<li><strong>Audio Fusion</strong> (<code>get_omni_embedding</code>) — On the vision-fused sequence, <code>audio_bounds</code> (which records the start and end positions of audio placeholders) is used to <strong>replace</strong> the corresponding embeddings with the audio encoder's output embeddings.</li>
+</ol>
+<p>The result is a unified <code>inputs_embeds</code> (containing text + vision + audio) that is fed into the LLM for causal reasoning.</p>
+<hr />
+<h2 id="language-model-inference">Language Model Inference</h2>
+<p>The fused <code>inputs_embeds</code> is fed into <code>Qwen3ForCausalLM</code> for autoregressive generation. The LLM is modality-agnostic — all modalities share the same embedding space after fusion.</p>
+<p>Text generation supports two modes:</p>
+<ul>
+<li><strong>Standard generation</strong> — The <code>_decode</code> method generates the complete output at once.</li>
+<li><strong>Streaming generation</strong> — The <code>_decode_stream</code> method returns tokens incrementally, supporting <code>ChunkPrefillChunkGenerate</code> for chunked prefill and chunked generation.</li>
+</ul>
+<hr />
+<h2 id="output-generation">Output Generation</h2>
+<h3 id="text-output">Text Output</h3>
+<p>The LLM directly outputs a token sequence, which is decoded into text by the Tokenizer.</p>
+<h3 id="text-to-speech-tts">Text-to-Speech (TTS)</h3>
+<p>When speech output is needed, the LLM's hidden states are converted to audio tokens by the <code>MiniCPMTTS</code> module, then synthesized into waveforms by a vocoder.</p>
+<p><strong>MiniCPMTTS Architecture</strong>:</p>
+<ul>
+<li><strong><code>emb_text</code></strong> — Text embedding layer that encodes the input text condition.</li>
+<li><strong><code>emb_code</code></strong> — Audio codebook embedding layer that encodes previously generated audio tokens.</li>
+<li><strong><code>model</code></strong> — <code>LlamaModel</code> serving as the TTS Transformer backbone.</li>
+<li><strong><code>head_code</code></strong> — Linear prediction head that outputs the probability distribution for the next audio token.</li>
+</ul>
+<p>The input layout is <code>[Text BOS | Speaker Embedding | Text Tokens | Audio BOS | Audio Tokens...]</code>, and the model autoregressively predicts the audio token sequence.</p>
+<p><strong>Four attention modes</strong> (configured via <code>attention_type</code>):</p>
+<ul>
+<li><strong><code>full_attention</code></strong> — Full attention with the highest accuracy but largest memory footprint.</li>
+<li><strong><code>sliding_window</code></strong> — Sliding window that truncates KV Cache beyond the window, balancing accuracy and efficiency.</li>
+<li><strong><code>sliding_recompute</code></strong> — Sliding recompute (default) that retains only the in-window KV Cache and recomputes each step, achieving a good balance between accuracy and efficiency.</li>
+<li><strong><code>reindex</code></strong> — RoPE reindexing that adjusts positional encoding to accommodate window truncation (experimental).</li>
+</ul>
+<p><strong>Token2Wav Vocoder</strong> — Converts the TTS audio tokens into 24kHz waveforms. Supports both streaming (chunk-by-chunk conversion) and non-streaming (batch conversion) modes.</p>
+<hr />
+<h2 id="duplex-capability-duplexcapability">Duplex Capability (DuplexCapability)</h2>
+<p><code>DuplexCapability</code> is a <strong>composition component</strong> (not inherited) that references the main <code>MiniCPMO</code> model's parameters via <code>self.model</code>, accessed as <code>model.duplex</code>. It implements real-time listen-speak interaction.</p>
+<h3 id="three-step-workflow">Three-Step Workflow</h3>
+<ol>
+<li><strong><code>prepare</code></strong> — Initializes the duplex session. Prefills the system prompt into the KV Cache, loads TTS reference audio (for voice cloning), and registers special tokens (<code>&lt;|listen|&gt;</code>, <code>&lt;|speak|&gt;</code>, <code>&lt;|tts_bos|&gt;</code>, <code>&lt;|tts_eos|&gt;</code>, etc.).</li>
+<li><strong><code>streaming_prefill</code></strong> — Chunk-by-chunk prefill. At each time step, audio features and/or video frames are encoded and fed into the KV Cache, keeping the model continuously "listening" to input.</li>
+<li><strong><code>streaming_generate</code></strong> — Step-by-step generation. At each step, the model decides whether to continue "listening" (output listen token) or start "speaking" (output speak token followed by text and audio tokens). Generated audio tokens are converted to waveforms in real-time via Token2Wav.</li>
+</ol>
+<h3 id="sliding-window-strategies">Sliding Window Strategies</h3>
+<p>During long duplex conversations, the KV Cache grows continuously. Sliding window strategies control memory usage:</p>
+<ul>
+<li><strong><code>basic</code></strong> — Basic sliding window that retains only the most recent N tokens in the KV Cache.</li>
+<li><strong><code>context</code></strong> — Context sliding window that retains the system prompt + the most recent N tokens, ensuring the model always remembers the system instructions.</li>
+</ul>
+<hr />
+<h2 id="configuration-reference">Configuration Reference</h2>
+<h3 id="minicpmoconfig">MiniCPMOConfig</h3>
+<p>Inherits from <code>Qwen3Config</code> and contains four sub-configurations:</p>
+<ul>
+<li><code>vision_config: SiglipVisionConfig</code> — Vision encoder configuration</li>
+<li><code>audio_config: WhisperConfig</code> — Audio encoder configuration</li>
+<li><code>tts_config: MiniCPMTTSConfig</code> — TTS module configuration</li>
+<li><code>slice_config: MiniCPMVSliceConfig</code> — Image slicing configuration</li>
+</ul>
+<p><strong>Key parameters</strong>:</p>
+<ul>
+<li><code>query_num = 64</code> — Number of Resampler query vectors</li>
+<li><code>image_size = 448</code> — Default image size</li>
+<li><code>drop_vision_last_layer = True</code> — Drop the last layer of the vision encoder</li>
+<li><code>vision_batch_size = 16</code> — Vision batch processing size</li>
+<li><code>audio_pool_step = 5</code> — Audio feature pooling step</li>
+<li><code>audio_chunk_length = 1.0</code> — Audio chunk length (seconds)</li>
+<li><code>init_vision = True</code> — Whether to initialize the vision encoder</li>
+<li><code>init_audio = True</code> — Whether to initialize the audio encoder</li>
+<li><code>init_tts = True</code> — Whether to initialize the TTS module</li>
+</ul>
+<h3 id="minicpmttsconfig">MiniCPMTTSConfig</h3>
+<ul>
+<li><code>llm_dim = 2560</code> — LLM projection dimension</li>
+<li><code>hidden_size = 768</code> — TTS hidden layer size</li>
+<li><code>num_hidden_layers = 20</code> — Number of TTS Transformer layers</li>
+<li><code>num_attention_heads = 12</code> — Number of attention heads</li>
+<li><code>num_audio_tokens = 4097</code> — Audio token vocabulary size</li>
+<li><code>num_text_tokens = 21178</code> — Text token vocabulary size</li>
+<li><code>streaming = True</code> — Whether to enable streaming mode</li>
+<li><code>attention_type = "sliding_recompute"</code> — Attention type</li>
+<li><code>window_size = 2</code> — Sliding window size</li>
+</ul></article>
+  <footer><p>MiniCPM-o 4.5 PyTorch Simple Demo &mdash; Generated by build_docs.py</p></footer>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+mermaid.initialize({startOnLoad:true,theme:'default',securityLevel:'loose'});
+</script>
+<script>
+hljs.highlightAll();
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('content').classList.toggle('shifted');}
+document.querySelectorAll('.nav-group-header').forEach(function(h){h.addEventListener('click',function(){this.parentElement.classList.toggle('collapsed');});});
+document.addEventListener('click',function(e){var s=document.getElementById('sidebar'),t=document.querySelector('.sidebar-toggle');if(window.innerWidth<=768&&s.classList.contains('open')&&!s.contains(e.target)&&!t.contains(e.target)){s.classList.remove('open');document.getElementById('content').classList.remove('shifted');}});
+</script>
+</body>
+</html>

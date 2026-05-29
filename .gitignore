@@ -1,0 +1,146 @@
+# =============================================================================
+# Full-Duplex-Bench-Omni .gitignore
+# =============================================================================
+
+# ---- Large datasets & raw media (download separately, not tracked) ----
+gopro/
+ego_dataset_collection_30fps/
+ego_dataset_collection.zip
+ego_dataset_collection_30fps_*.tar
+EgoPER_compressed/
+EgoPER_compressed.tar
+1qna/
+1qna_anno/
+1qna_anno.zip
+v1.0/
+v1.5/
+
+# ---- Archive files ----
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.7z
+*.rar
+
+# ---- Miscellaneous non-code directories ----
+pdf/
+oths/
+
+# ---- Runtime outputs & inference results ----
+**/outputs/
+**/audio_per_second/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+.eggs/
+venv/
+.venv/
+env/
+ENV/
+
+# ---- Node.js ----
+node_modules/
+package-lock.json
+
+# ---- Environment & secrets ----
+.env
+.env.*
+
+.cursor
+.claude
+.vscode
+
+# ---- OS files ----
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ---- IDE / Editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+
+# ---- Temporary / debug files ----
+*.log
+*.tmp
+*.bak
+
+# ---- Audio/video data (top-level only; benchmark example_data is tracked) ----
+/*.mp4
+/*.wav
+/*.pcm
+/*.pcm.raw
+
+# =============================================================================
+# Upstream repository origins (code flattened into this repo):
+#   - Full-Duplex-Bench:              https://github.com/DanielLin94144/Full-Duplex-Bench
+#   - generative-ai (Gemini Live):    https://github.com/GoogleCloudPlatform/generative-ai
+#   - alibabacloud-bailian-speech-demo: https://github.com/aliyun/alibabacloud-bailian-speech-demo
+# =============================================================================
+# Python
+.venv/
+.venv
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+
+# Local config & runtime files (copy from config.example.json)
+config.json
+# certs/
+
+# Runtime data
+data/
+
+# Temp files
+tmp/
+temp/
+
+# Test output (can be regenerated)
+tests/results/
+
+# Model weights & large assets (user-provided)
+*.safetensors
+MiniCPM-o-Demo/MiniCPMO45/assets/
+MiniCPM-o-Demo/resources/
+
+# IDE (optional)
+.idea/
+.vscode/
+*.swp
+*.swo
+playbook/
+
+public/
+
+torch_compile_cache/
+AutoAWQ/
+
+dev_tools/
+
+benchmark.json
+outputs
+offline_math_eval/clips
+offline_math_eval/eval_manifest.json
+offline_math_eval/results

@@ -1,0 +1,3166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniCPMO45 Turn-based Chat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        [data-tooltip] { position: relative; cursor: help; }
+        [data-tooltip]::after {
+            content: attr(data-tooltip); position: absolute; bottom: calc(100% + 6px); left: 50%;
+            transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #fff;
+            padding: 8px 12px; border-radius: 6px; font-size: 12px; line-height: 1.5;
+            white-space: normal; width: max-content; max-width: 280px;
+            pointer-events: none; opacity: 0; transition: opacity 0.15s ease;
+            transition-delay: 0s; z-index: 1000;
+        }
+        [data-tooltip]:hover::after { opacity: 1; transition-delay: 0.2s; }
+
+        html {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Noto Sans SC', sans-serif;
+            background: #f5f5f0;
+            color: #2d2d2d;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* 顶部导航 */
+        .header {
+            background: #fff;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e5e5e0;
+        }
+        .header h1 { font-size: 16px; font-weight: 600; color: #2d2d2d; letter-spacing: -0.3px; }
+        .header .status {
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 10px;
+            background: #f0f0eb;
+            color: #666;
+        }
+        .header .status.online { color: #1a7f37; background: #ddf4e4; }
+        .header .status.offline { color: #cf222e; background: #ffe3e6; }
+        .nav-links { display: flex; gap: 6px; }
+        .nav-links a {
+            font-size: 13px; padding: 4px 12px; border-radius: 6px;
+            text-decoration: none; transition: all 0.15s;
+        }
+        .nav-links a.active { background: #2d2d2d; color: #fff; }
+        .nav-links a:not(.active) { color: #666; }
+        .nav-links a:not(.active):hover { background: #f0f0eb; }
+
+        /* ================ 初始视图（ChatGPT 风格） ================ */
+        .initial-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            gap: 32px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .initial-view.hidden { display: none; }
+
+        .initial-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2d2d2d;
+        }
+        .initial-subtitle {
+            font-size: 14px;
+            color: #999;
+            margin-top: -20px;
+        }
+
+        /* System 配置卡片 */
+        .system-config-card {
+            background: #fff;
+            border: 1px solid #e5e5e0;
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 640px;
+        }
+        .system-config-card summary {
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #666;
+            user-select: none;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .system-config-card summary::-webkit-details-marker { display: none; }
+        .system-config-card summary::before { content: '▸'; transition: transform 0.15s; }
+        .system-config-card[open] summary::before { transform: rotate(90deg); }
+        .system-config-card .sc-body {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .sc-field label {
+            display: block;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        /* TTS Ref Audio 控件 */
+        .tts-ref-wrap {
+            padding: 8px 10px;
+            background: #fafaf8;
+            border: 1px solid #e8e6e0;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        .tts-ref-wrap .tts-ref-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+            color: #666;
+            font-weight: 500;
+        }
+        .tts-ref-wrap .tts-ref-options {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .tts-ref-wrap .tts-ref-options label {
+            display: inline;
+            margin-bottom: 0;
+            cursor: pointer;
+            color: #555;
+        }
+        .tts-ref-wrap .tts-ref-hint {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 2px;
+        }
+        .tts-ref-wrap .tts-ref-hint.warning { color: #d4a017; }
+        .tts-ref-wrap .tts-ref-upload { margin-top: 6px; }
+        .sc-field textarea {
+            width: 100%;
+            border: 1px solid #e5e5e0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            resize: vertical;
+            outline: none;
+            font-family: inherit;
+            min-height: 60px;
+            transition: border-color 0.15s;
+        }
+        .sc-field textarea:focus { border-color: #999; }
+        .sc-field textarea::placeholder { color: #ccc; }
+
+        /* 初始输入框 */
+        .initial-input-wrap {
+            width: 100%;
+            max-width: 640px;
+            background: #fff;
+            border: 1px solid #d5d5d0;
+            border-radius: 16px;
+            padding: 4px;
+            transition: border-color 0.15s;
+        }
+        .initial-input-wrap:focus-within { border-color: #999; }
+        /* UCE 空状态的 textarea 继承外层容器样式 */
+        .initial-input-wrap .uce-empty-ta {
+            min-height: 40px;
+            max-height: 180px;
+        }
+        .initial-input-wrap .uce-empty-ta::placeholder { color: #bbb; }
+
+        /* ================ 对话视图 ================ */
+        .chat-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 960px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 16px;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .chat-view.hidden { display: none; }
+
+        /* System 配置条（对话中的折叠版本） */
+        .sys-config-bar {
+            background: #fff;
+            border: 1px solid #e5e5e0;
+            border-radius: 10px;
+            margin: 8px 0;
+            font-size: 12px;
+            overflow: hidden;
+        }
+        .sys-config-bar summary {
+            cursor: pointer;
+            padding: 6px 12px;
+            color: #888;
+            user-select: none;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sys-config-bar summary::-webkit-details-marker { display: none; }
+        .sys-config-bar summary::before { content: '⚙'; }
+        .sys-config-bar .sc-inline-body {
+            padding: 0 12px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* 消息列表 */
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0 16px;
+        }
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            position: relative;
+        }
+        .message .avatar {
+            width: 28px; height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .message.user .avatar { background: #e8e8e3; }
+        .message.assistant .avatar { background: #d4a574; color: #fff; font-size: 12px; }
+
+        .message .msg-body {
+            max-width: 85%;
+            min-width: 0;
+            flex: 1;
+        }
+        .message .content {
+            padding: 0;
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 14.5px;
+            color: #2d2d2d;
+        }
+        .message.user .content {
+            background: #fff;
+            border: 1px solid #e5e5e0;
+            border-radius: 12px;
+            padding: 10px 14px;
+            color: #2d2d2d;
+        }
+        .message .meta {
+            font-size: 11px;
+            color: #999;
+            margin-top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .meta-line {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .meta-label { color: #bbb; }
+        .meta-value { color: #888; font-family: 'SF Mono', 'Menlo', monospace; font-size: 10.5px; }
+        .meta-sep { color: #ddd; }
+        .meta-rid {
+            font-family: 'SF Mono', 'Menlo', monospace;
+            font-size: 10px;
+            color: #aaa;
+            background: #f5f5f0;
+            padding: 1px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s;
+            border: 1px solid transparent;
+        }
+        .meta-rid:hover { color: #666; background: #eee; border-color: #ddd; }
+        .meta-rid.copied { color: #1a7f37; background: #ddf4e4; }
+        /* 非对话内容：APP 级系统日志消息（排队、错误等） */
+        .message .content.is-system-log {
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+        }
+        .message .content.is-system-log.is-error {
+            background: #fff5f5;
+            border-color: #fcd4d4;
+            color: #9a2020;
+        }
+
+        /* 消息编辑 */
+        .msg-edit-btn {
+            position: absolute;
+            right: 0;
+            top: 2px;
+            font-size: 11px;
+            color: #bbb;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .message:hover .msg-edit-btn { opacity: 1; }
+        .msg-edit-btn:hover { color: #666; background: #f0f0eb; }
+        .msg-edit-area {
+            width: 100%;
+            border: 1px solid #d4a574;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+            min-height: 60px;
+        }
+        /* User 消息操作栏（常驻、竖排、flex 子元素避免 overflow 裁剪） */
+        .msg-actions-col {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex-shrink: 0;
+            align-self: flex-start;
+            margin-top: 2px;
+        }
+        .msg-actions-col .msg-action-btn {
+            width: 26px; height: 26px;
+            display: flex; align-items: center; justify-content: center;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            color: #ccc;
+            cursor: pointer;
+            transition: all 0.12s;
+            padding: 0;
+        }
+        .msg-actions-col .msg-action-btn svg {
+            width: 14px; height: 14px;
+        }
+        .msg-actions-col .msg-action-btn:hover { color: #888; background: #f0f0eb; }
+        .msg-actions-col .msg-action-btn.resend-btn:hover { color: #d4a574; background: #faf5ef; }
+        .msg-actions-col .msg-action-btn:disabled { opacity: 0.25; cursor: default; pointer-events: none; }
+
+        /* 内容列表视图模式 */
+        .msg-content-items .msg-ci-text {
+            margin-bottom: 2px;
+        }
+        .msg-content-items .msg-ci-audio {
+            margin: 4px 0;
+        }
+        .msg-content-items .msg-ci-image {
+            margin: 4px 0;
+        }
+        .msg-content-items .msg-ci-image img {
+            max-width: 240px;
+            max-height: 200px;
+            border-radius: 8px;
+            border: 1px solid #e5e5e0;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        .msg-content-items .msg-ci-image img:hover { opacity: 0.85; }
+        .msg-content-items .msg-ci-video {
+            margin: 4px 0;
+        }
+        .msg-content-items .msg-ci-video video {
+            max-width: 320px;
+            max-height: 240px;
+            border-radius: 8px;
+            border: 1px solid #e5e5e0;
+        }
+
+        /* 编辑器容器 */
+        .msg-edit-editor-wrap {
+            margin-bottom: 4px;
+        }
+
+        /* 音频控件 */
+        .audio-ctrl {
+            margin-top: 10px;
+            background: #fff;
+            border: 1px solid #e5e5e0;
+            border-radius: 8px;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+            font-size: 12px;
+        }
+        .audio-ctrl button {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            font-size: 10px;
+            transition: opacity 0.15s;
+        }
+        .audio-ctrl button:hover { opacity: 0.75; }
+        .audio-ctrl .ac-play { background: #2d2d2d; }
+        .audio-ctrl .ac-time {
+            color: #999;
+            white-space: nowrap;
+            min-width: 68px;
+            font-variant-numeric: tabular-nums;
+            font-size: 11px;
+        }
+        .audio-ctrl .ac-bar {
+            flex: 1;
+            height: 3px;
+            background: #e5e5e0;
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+            min-width: 60px;
+        }
+        .audio-ctrl .ac-bar-fill {
+            position: absolute; top: 0; left: 0;
+            height: 100%;
+            background: #2d2d2d;
+            border-radius: 2px;
+            pointer-events: none;
+        }
+        .audio-ctrl .ac-bar-dot {
+            position: absolute; top: -4px;
+            width: 11px; height: 11px;
+            background: #2d2d2d;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 2px rgba(0,0,0,0.15);
+            pointer-events: none;
+        }
+
+        /* 输入区 */
+        .input-area {
+            padding: 0 0 20px;
+        }
+        .input-wrap {
+            background: #fff;
+            border: 1px solid #d5d5d0;
+            border-radius: 16px;
+            padding: 4px;
+            transition: border-color 0.15s;
+        }
+        .input-wrap:focus-within { border-color: #999; }
+
+        /* UCE 空状态的 textarea 继承外层容器样式 */
+        .input-wrap .uce-empty-ta {
+            min-height: 40px;
+            max-height: 180px;
+        }
+        .input-wrap .uce-empty-ta::placeholder { color: #bbb; }
+
+        .input-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 6px 4px 10px;
+        }
+
+        .input-options {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .input-options select, .input-options input[type="number"] {
+            background: #f5f5f0;
+            border: 1px solid #e5e5e0;
+            border-radius: 6px;
+            padding: 2px 6px;
+            color: #555;
+            font-size: 11px;
+            outline: none;
+        }
+        .input-options label { color: #999; font-size: 11px; }
+        .input-options .opt-group {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .input-options input[type="checkbox"] {
+            accent-color: #d4a574;
+        }
+
+        .btn-send {
+            width: 32px; height: 32px;
+            border-radius: 10px;
+            border: none;
+            background: #2d2d2d;
+            color: white;
+            cursor: pointer;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s;
+            flex-shrink: 0;
+        }
+        .btn-send:hover { background: #444; }
+        .btn-send:disabled { background: #ddd; color: #aaa; cursor: not-allowed; }
+
+        /* 录音按钮（大号，独立醒目） */
+        .btn-record {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            border: 2px solid #d5d5d0;
+            background: #fff;
+            color: #888;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .btn-record:hover { border-color: #999; color: #555; background: #f8f8f5; }
+        .btn-record.recording {
+            border-color: #cf222e;
+            background: #cf222e;
+            color: #fff;
+            animation: record-pulse 1s infinite;
+        }
+        @keyframes record-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(207, 34, 46, 0.3); }
+            50% { box-shadow: 0 0 0 8px rgba(207, 34, 46, 0); }
+        }
+        .record-timer {
+            position: absolute;
+            bottom: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: #cf222e;
+            font-weight: 600;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        .record-hint {
+            font-size: 10px;
+            color: #bbb;
+            text-align: center;
+            margin-top: 2px;
+            white-space: nowrap;
+            letter-spacing: -0.2px;
+        }
+
+        /* 音频输入按钮（小号） */
+        .input-actions {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .input-actions button {
+            width: 32px; height: 32px;
+            border-radius: 10px;
+            border: 1px solid #d5d5d0;
+            background: #fff;
+            color: #888;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .input-actions button:hover { border-color: #999; color: #555; }
+        .input-actions button.recording {
+            border-color: #cf222e;
+            color: #cf222e;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .input-actions input[type="file"] { display: none; }
+
+        /* Toggle switch */
+        .toggle-switch { position: relative; display: inline-block; width: 32px; height: 18px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer; inset: 0;
+            background: #d5d5d0; border-radius: 18px; transition: 0.2s;
+        }
+        .toggle-slider::before {
+            content: ""; position: absolute; width: 14px; height: 14px;
+            left: 2px; bottom: 2px; background: #fff; border-radius: 50%; transition: 0.2s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: #2d2d2d; }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(14px); }
+        .toggle-row { display: flex; align-items: center; gap: 6px; }
+        .toggle-label { font-size: 12px; color: #666; line-height: 18px; cursor: default; }
+
+        /* Mic / Attach action buttons */
+        .input-actions .btn-mic {
+            width: auto;
+            padding: 0 10px;
+            gap: 4px;
+        }
+        .input-actions .btn-mic .kbd-hint {
+            font-size: 9px;
+            opacity: 0.5;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        .input-actions .btn-mic:hover {
+            border-color: #cf222e;
+            color: #cf222e;
+            background: #fff5f5;
+        }
+        .input-actions .btn-attach:hover {
+            border-color: #4070a0;
+            color: #4070a0;
+            background: #f5f8fb;
+        }
+
+        /* Keyboard shortcut hints above input */
+        .input-hints {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 6px 0;
+            font-size: 12px;
+            color: #999;
+        }
+        .input-hints .hint-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .input-hints kbd {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 5px;
+            font-family: inherit;
+            font-size: 11px;
+            color: #666;
+            background: #f0f0ec;
+            border: 1px solid #d5d5d0;
+            border-radius: 4px;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+        }
+        .input-hints .hint-icon {
+            width: 14px;
+            height: 14px;
+            opacity: 0.45;
+            flex-shrink: 0;
+        }
+        .input-hints .hint-sep {
+            width: 1px;
+            height: 12px;
+            background: #ddd;
+        }
+
+        /* Drag & drop overlay */
+        .initial-input-wrap, .input-wrap { position: relative; }
+        .drag-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(64, 112, 160, 0.06);
+            border: 2px dashed #4070a0;
+            border-radius: 14px;
+            z-index: 10;
+            pointer-events: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: #4070a0;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .drag-overlay.visible { display: flex; }
+
+        /* 附件预览 */
+        .attachments {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 4px 10px 2px;
+        }
+        .attachment {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #f0f0eb;
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 11px;
+            color: #555;
+        }
+        .attachment .att-remove {
+            cursor: pointer;
+            color: #999;
+            font-size: 13px;
+            line-height: 1;
+        }
+        .attachment .att-remove:hover { color: #cf222e; }
+
+        /* 迷你音频播放器 */
+        .mini-player {
+            margin-top: 8px;
+            background: #fff;
+            border: 1px solid #e5e5e0;
+            border-radius: 8px;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+            font-size: 12px;
+        }
+        .mini-player .mp-btn {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            border: none;
+            background: #2d2d2d;
+            color: #fff;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: opacity 0.15s;
+        }
+        .mini-player .mp-btn:hover { opacity: 0.75; }
+        .mini-player .mp-bar {
+            flex: 1;
+            height: 3px;
+            background: #e5e5e0;
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+            min-width: 60px;
+        }
+        .mini-player .mp-bar-fill {
+            position: absolute; top: 0; left: 0;
+            height: 100%; background: #2d2d2d;
+            border-radius: 2px;
+            pointer-events: none;
+        }
+        .mini-player .mp-bar-dot {
+            position: absolute; top: -4px;
+            width: 11px; height: 11px;
+            background: #2d2d2d;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 2px rgba(0,0,0,0.15);
+            pointer-events: none;
+        }
+        .mini-player .mp-time {
+            color: #999;
+            white-space: nowrap;
+            min-width: 40px;
+            font-variant-numeric: tabular-nums;
+            font-size: 11px;
+        }
+
+        /* 下载按钮（音频/图片条目右侧） */
+        .dl-btn {
+            width: 22px; height: 22px;
+            border: none; background: none;
+            cursor: pointer;
+            color: #999;
+            display: inline-flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            border-radius: 4px;
+            transition: color 0.15s, background 0.15s;
+            padding: 0;
+        }
+        .dl-btn:hover { color: #2d2d2d; background: rgba(0,0,0,0.06); }
+        .dl-btn svg { width: 14px; height: 14px; }
+        .msg-ci-audio, .msg-ci-image, .msg-ci-video { position: relative; }
+        .msg-ci-audio .dl-btn, .msg-ci-image .dl-btn, .msg-ci-video .dl-btn {
+            position: absolute; top: 4px; right: 4px;
+            opacity: 0; transition: opacity 0.15s;
+        }
+        .msg-ci-audio:hover .dl-btn, .msg-ci-image:hover .dl-btn, .msg-ci-video:hover .dl-btn { opacity: 1; }
+
+        /* Export 按钮（对话工具栏） */
+        .chat-toolbar {
+            display: flex; justify-content: flex-end; padding: 0 4px 4px; gap: 6px;
+        }
+        .chat-toolbar .btn-export {
+            font-size: 12px; padding: 3px 10px;
+            border: 1px solid #d5d5d0; border-radius: 6px;
+            background: #fff; color: #666; cursor: help;
+            display: flex; align-items: center; gap: 4px;
+            transition: background 0.15s, color 0.15s;
+        }
+        .chat-toolbar .btn-export:hover { background: #f5f5f0; color: #333; }
+        .chat-toolbar .btn-export:active { cursor: pointer; }
+        .chat-toolbar .btn-export svg { width: 13px; height: 13px; }
+
+        /* JS-positioned tooltip (follows cursor, never clipped by viewport) */
+        .data-tip-popup {
+            position: fixed; z-index: 10000;
+            padding: 8px 12px; border-radius: 6px;
+            background: rgba(0,0,0,0.85); color: #fff;
+            font-size: 12px; font-weight: 400; line-height: 1.5;
+            white-space: normal; max-width: 340px;
+            pointer-events: none;
+        }
+
+        /* 打字指示器 */
+        .typing-indicator {
+            display: none;
+            color: #999;
+            font-size: 13px;
+            padding: 4px 0;
+            align-items: center;
+            gap: 8px;
+        }
+        .typing-indicator.active { display: flex; }
+        .btn-stop {
+            padding: 3px 12px;
+            border: 1px solid #d5d5d0;
+            border-radius: 6px;
+            background: #fff;
+            color: #888;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.15s;
+        }
+        .btn-stop:hover { border-color: #cf222e; color: #cf222e; background: #fff5f5; }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d5d5d0; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #bbb; }
+    </style>
+</head>
+<body>
+    <!-- ========== Header ========== -->
+    <div class="header">
+        <div style="display:flex;align-items:center;gap:16px;">
+            <h1>MiniCPM-o 4.5</h1>
+            <div class="nav-links">
+                <a href="/" >Home</a>
+                <a href="/turnbased" class="active">Turn-based Chat</a>
+            </div>
+        </div>
+        <div class="status" id="serviceStatus">connecting...</div>
+    </div>
+
+    <!-- ========== 初始视图（ChatGPT 风格） ========== -->
+    <div class="initial-view" id="initialView">
+        <div class="initial-title">MiniCPM-o 4.5</div>
+        <div class="initial-subtitle">Turn-based Chat</div>
+
+        <!-- Preset + System 配置 -->
+        <div class="system-config-card" style="padding:16px 20px;">
+            <div id="presetSelectorInit"></div>
+            <details id="systemConfigCard" style="margin-top:8px;">
+                <summary style="cursor:pointer;font-size:12px;color:#999;user-select:none;list-style:none;display:none;">Advanced System Settings</summary>
+                <div class="sc-body" style="margin-top:10px;">
+                    <div class="sc-field">
+                        <label>System Content (text + audio, reorderable)</label>
+                        <div id="sysContentEditorInit"></div>
+                    </div>
+                    <div class="sc-field">
+                        <div class="tts-ref-wrap" id="ttsRefWrapInit">
+                            <div class="tts-ref-header">TTS Ref Audio (voice cloning)</div>
+                            <div class="tts-ref-options">
+                                <label><input type="radio" name="ttsRefModeInit" value="extract" checked onchange="onTtsRefModeChange()"> Extract from System</label>
+                                <label><input type="radio" name="ttsRefModeInit" value="independent" onchange="onTtsRefModeChange()"> Independent</label>
+                            </div>
+                            <div class="tts-ref-hint" id="ttsRefHintInit"></div>
+                            <div class="tts-ref-upload" id="ttsRefUploadInit" style="display:none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- 快捷键提示 -->
+        <div class="input-hints">
+            <span class="hint-item">
+                <svg class="hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                Hold <kbd>Space</kbd> to record, release to stop
+            </span>
+            <span class="hint-sep"></span>
+            <span class="hint-item">
+                <svg class="hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7 7 7-7"/><path d="M12 19V5"/></svg>
+                <kbd>Enter</kbd> to send
+            </span>
+            <span class="hint-sep"></span>
+            <span class="hint-item">
+                <svg class="hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                Drag & drop or <kbd>⌘V</kbd> to attach
+            </span>
+        </div>
+
+        <!-- 首轮输入（UserContentEditor） -->
+        <div class="initial-input-wrap">
+            <div class="drag-overlay" id="dragOverlayInit">📎 Drop image, audio or video here</div>
+            <div id="composeEditorInit"></div>
+            <div class="input-bottom">
+                <div class="input-options">
+                    <div class="toggle-row" data-tooltip="Get text and voice response in real time.">
+                        <label class="toggle-switch"><input type="checkbox" id="enableStreamingInit" checked><span class="toggle-slider"></span></label>
+                        <span class="toggle-label">Streaming</span>
+                    </div>
+                    <div class="toggle-row" data-tooltip="Generate voice reply. Best for spoken conversations. Bad for Markdown-style response. Enabling this will also affects text output.">
+                        <label class="toggle-switch"><input type="checkbox" id="enableTtsInit"><span class="toggle-slider"></span></label>
+                        <span class="toggle-label">Voice Response</span>
+                    </div>
+                    <div class="opt-group" style="display:flex; align-items:center; gap:3px;">
+                        <label style="font-size:11px; color:#bbb;">new tokens</label>
+                        <input type="number" id="maxTokensInit" value="1024" min="1" max="2048" style="width:48px; font-size:11px; padding:2px 4px; border:1px solid #e5e5e0; border-radius:4px; color:#888;">
+                    </div>
+                    <div class="opt-group" style="display:flex; align-items:center; gap:3px;">
+                        <label style="font-size:11px; color:#bbb;" data-tooltip="Higher value = longer responses. EOS logit divided by this value.">len_pen</label>
+                        <input type="number" id="lengthPenaltyInit" value="1.1" min="0.1" max="5.0" step="0.05" style="width:48px; font-size:11px; padding:2px 4px; border:1px solid #e5e5e0; border-radius:4px; color:#888;">
+                    </div>
+                </div>
+                <div class="input-actions">
+                    <button class="btn-mic" id="micBtnInit" title="Record audio (Space key)">🎤 <span class="kbd-hint">Space</span></button>
+                    <button class="btn-send" id="sendBtnInit" onclick="sendFirstMessage()">&#8593;</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 对话视图 ========== -->
+    <div class="chat-view hidden" id="chatView">
+        <!-- Preset + System 配置 -->
+        <div class="sys-config-bar" style="padding:8px 12px;">
+            <div id="presetSelectorChat"></div>
+        </div>
+        <details class="sys-config-bar" id="sysConfigBar" style="margin-top:4px;">
+            <summary id="sysConfigBarSummary" style="display:none;">System Settings</summary>
+            <div class="sc-inline-body">
+                <div class="sc-field">
+                    <label>System Content</label>
+                    <div id="sysContentEditorChat"></div>
+                </div>
+                <div class="sc-field">
+                    <div class="tts-ref-wrap" id="ttsRefWrapChat">
+                        <div class="tts-ref-header">TTS Ref Audio</div>
+                        <div class="tts-ref-options">
+                            <label><input type="radio" name="ttsRefModeChat" value="extract" checked onchange="onTtsRefModeChange()"> Extract from System</label>
+                            <label><input type="radio" name="ttsRefModeChat" value="independent" onchange="onTtsRefModeChange()"> Independent</label>
+                        </div>
+                        <div class="tts-ref-hint" id="ttsRefHintChat"></div>
+                        <div class="tts-ref-upload" id="ttsRefUploadChat" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <div class="chat-toolbar">
+            <button class="btn-export" onclick="exportConversation()" data-tip="Export conversation as .msgpack — MessagePack is a JSON-like binary format that can store raw bytes (audio, images). Open .msgpack files in Cursor/VS Code with the msgpack-audio-viewer extension. You can also read .msgpack programmatically with any msgpack library (Python, JS, etc.).">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export .msgpack
+            </button>
+        </div>
+
+        <div class="messages" id="messages"></div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <span>Generating...</span>
+            <button class="btn-stop" id="btnCancelStop" onclick="cancelGeneration()">✕ Cancel</button>
+        </div>
+
+        <div class="input-area">
+            <div class="input-hints">
+                <span class="hint-item">
+                    <svg class="hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                    Hold <kbd>Space</kbd> to record, release to stop
+                </span>
+                <span class="hint-sep"></span>
+                <span class="hint-item">
+                    <svg class="hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7 7 7-7"/><path d="M12 19V5"/></svg>
+                    <kbd>Enter</kbd> to send
+                </span>
+                <span class="hint-sep"></span>
+                <span class="hint-item">
+                    <svg class="hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    Drag & drop or <kbd>⌘V</kbd> to attach
+                </span>
+            </div>
+            <div class="input-wrap">
+                <div class="drag-overlay" id="dragOverlayChat">📎 Drop image, audio or video here</div>
+                <div id="composeEditorChat"></div>
+                <div class="input-bottom">
+                    <div class="input-options">
+                        <div class="toggle-row" data-tooltip="Stream tokens in real time, ideal for long responses">
+                            <label class="toggle-switch"><input type="checkbox" id="enableStreaming" checked><span class="toggle-slider"></span></label>
+                            <span class="toggle-label">Streaming</span>
+                        </div>
+                        <div class="toggle-row" data-tooltip="Generate voice reply. Best for spoken conversations. Enabling this affects text output — special characters (Markdown, code, etc.) will be suppressed.">
+                            <label class="toggle-switch"><input type="checkbox" id="enableTts"><span class="toggle-slider"></span></label>
+                            <span class="toggle-label">Voice Response</span>
+                        </div>
+                        <div class="opt-group" style="display:flex; align-items:center; gap:3px;">
+                            <label style="font-size:11px; color:#bbb;">tokens</label>
+                            <input type="number" id="maxTokens" value="256" min="1" max="2048" style="width:48px; font-size:11px; padding:2px 4px; border:1px solid #e5e5e0; border-radius:4px; color:#888;">
+                        </div>
+                        <div class="opt-group" style="display:flex; align-items:center; gap:3px;">
+                            <label style="font-size:11px; color:#bbb;" data-tooltip="Higher value = longer responses. EOS logit divided by this value.">len_pen</label>
+                            <input type="number" id="lengthPenalty" value="1.1" min="0.1" max="5.0" step="0.05" style="width:48px; font-size:11px; padding:2px 4px; border:1px solid #e5e5e0; border-radius:4px; color:#888;">
+                        </div>
+                    </div>
+                    <div class="input-actions">
+                        <button class="btn-mic" id="micBtnChat" title="Record audio (Space key)">🎤 <span class="kbd-hint">Space</span></button>
+                        <button class="btn-send" id="sendBtn" onclick="sendMessage()">&#8593;</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script src="/static/ref-audio-player.js"></script>
+<script src="/static/shared/preset-selector.js"></script>
+<script src="/static/system-content-editor.js"></script>
+<script src="/static/user-content-editor.js"></script>
+<script>
+// ============ 状态 ============
+// 默认 system content list（模型最佳实践：text + ref_audio + text）
+const DEFAULT_SYSTEM_CONTENT = [
+    { type: 'text', text: '模仿音频样本的音色并生成新的内容。' },
+    { type: 'audio', data: null, name: '', duration: 0 },
+    { type: 'text', text: '你的任务是用这种声音模式来当一个助手。请认真、高质量地回复用户的问题。请用高自然度的方式和用户聊天。你是由面壁智能开发的人工智能助手：面壁小钢炮。' },
+];
+
+const state = {
+    messages: [],       // {role, content, displayText} - content: str | [{type,text},{type,data}]
+    systemContentList: JSON.parse(JSON.stringify(DEFAULT_SYSTEM_CONTENT)), // content list items
+    isGenerating: false,
+    generationPhase: 'idle',    // 'idle' | 'queuing' | 'generating'
+    currentTicketId: null,      // ticket_id from gateway queue (Streaming only)
+    abortController: null,
+    streamingWs: null,
+    ws: null,
+    requestId: 'req_' + Date.now(),
+    composeEditorInit: null, // UserContentEditor 实例（初始视图）
+    composeEditorChat: null, // UserContentEditor 实例（对话视图）
+    currentView: 'initial', // 'initial' | 'conversation'
+    editingIndex: -1,   // 正在编辑的消息索引
+    // TTS Ref Audio（独立于系统 prompt 中的 LLM ref audio）
+    ttsRefAudioMode: 'extract',     // 'extract' | 'independent'
+    ttsRefAudioData: null,          // 独立上传时的 base64 数据
+    ttsRefAudioName: '',            // 独立上传时的文件名
+    ttsRefAudioDuration: 0,         // 独立上传时的时长
+};
+
+const API_BASE = window.location.origin;
+
+// ============ 初始化 ============
+function init() {
+    checkServiceStatus();
+    setInterval(checkServiceStatus, 3000);
+
+    // 创建 Compose Editor（初始视图 + 对话视图）— compose 模式融入外层容器
+    state.composeEditorInit = new UserContentEditor(
+        document.getElementById('composeEditorInit'),
+        { placeholder: 'Type or press Space to record...', onSubmit: () => sendFirstMessage(), compose: true, showImageBtn: false }
+    );
+    state.composeEditorChat = new UserContentEditor(
+        document.getElementById('composeEditorChat'),
+        { placeholder: 'Type or press Space to record...', onSubmit: () => sendMessage(), compose: true, showImageBtn: false }
+    );
+
+    // 默认让 chat compose editor 成为 Space 键目标
+    _uceLastActiveEditor = state.composeEditorInit;
+
+    // 初始化 System Content 编辑器（两个视图共享状态）
+    initSystemContentEditors();
+
+    // 输入增强：mic/attach 按钮 + 拖拽 + 粘贴
+    initInputEnhancements();
+}
+
+// ============ 输入增强：mic/attach 按钮 + 拖拽 + 粘贴 ============
+
+function initInputEnhancements() {
+    // ── Mic 按钮 → 触发 UCE 录音 ──
+    document.getElementById('micBtnInit').addEventListener('click', () => {
+        _uceLastActiveEditor = state.composeEditorInit;
+        state.composeEditorInit._startRecording();
+    });
+    document.getElementById('micBtnChat').addEventListener('click', () => {
+        _uceLastActiveEditor = state.composeEditorChat;
+        state.composeEditorChat._startRecording();
+    });
+
+    // ── Attach 按钮 → 文件选择 ──
+    const attachInputInit = _createAttachFileInput(() => state.composeEditorInit);
+    const attachInputChat = _createAttachFileInput(() => state.composeEditorChat);
+    document.getElementById('attachBtnInit')?.addEventListener('click', () => attachInputInit.click());
+    document.getElementById('attachBtnChat')?.addEventListener('click', () => attachInputChat.click());
+
+    // ── 拖拽上传 ──
+    _setupDragDrop(
+        document.querySelector('.initial-input-wrap'),
+        document.getElementById('dragOverlayInit'),
+        () => state.composeEditorInit
+    );
+    _setupDragDrop(
+        document.querySelector('.input-wrap'),
+        document.getElementById('dragOverlayChat'),
+        () => state.composeEditorChat
+    );
+
+    // ── 剪贴板粘贴图片（document 级别，焦点不在输入框也能工作） ──
+    document.addEventListener('paste', (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        let handled = false;
+        for (const item of items) {
+            if (item.kind === 'file' && (item.type.startsWith('image/') || item.type.startsWith('video/'))) {
+                const file = item.getAsFile();
+                if (file) {
+                    const editor = state.currentView === 'initial'
+                        ? state.composeEditorInit
+                        : state.composeEditorChat;
+                    _addFileToEditor(editor, file);
+                    handled = true;
+                }
+            }
+        }
+        if (handled) e.preventDefault();
+    });
+}
+
+function _createAttachFileInput(getEditor) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'audio/*,video/*';
+    input.multiple = true;
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', () => {
+        const editor = getEditor();
+        for (const file of input.files) _addFileToEditor(editor, file);
+        input.value = '';
+    });
+    return input;
+}
+
+function _addFileToEditor(editor, file) {
+    if (file.type.startsWith('image/')) {
+        return; // image upload disabled
+    } else if (file.type.startsWith('audio/')) {
+        const objectUrl = URL.createObjectURL(file);
+        const audio = new Audio(objectUrl);
+        audio.addEventListener('loadedmetadata', () => {
+            editor.addItem({ type: 'audio', file, name: file.name, duration: audio.duration, objectUrl, data: null });
+        });
+        audio.addEventListener('error', () => {
+            editor.addItem({ type: 'audio', file, name: file.name, duration: 0, objectUrl, data: null });
+        });
+    } else if (file.type.startsWith('video/')) {
+        const objectUrl = URL.createObjectURL(file);
+        const videoEl = document.createElement('video');
+        videoEl.preload = 'metadata';
+        videoEl.src = objectUrl;
+        videoEl.addEventListener('loadedmetadata', () => {
+            editor.addItem({ type: 'video', file, name: file.name, duration: videoEl.duration, objectUrl, data: null });
+        });
+        videoEl.addEventListener('error', () => {
+            editor.addItem({ type: 'video', file, name: file.name, duration: 0, objectUrl, data: null });
+        });
+    }
+}
+
+function _setupDragDrop(wrapEl, overlayEl, getEditor) {
+    let dragCounter = 0;
+
+    wrapEl.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+        if (dragCounter === 1) overlayEl.classList.add('visible');
+    });
+
+    wrapEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    });
+
+    wrapEl.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter <= 0) {
+            dragCounter = 0;
+            overlayEl.classList.remove('visible');
+        }
+    });
+
+    wrapEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        overlayEl.classList.remove('visible');
+        const editor = getEditor();
+        for (const file of e.dataTransfer.files) _addFileToEditor(editor, file);
+    });
+}
+
+// ============ System Content 编辑器 ============
+let _sceInit = null, _sceChat = null;
+
+function initSystemContentEditors() {
+    // 每个编辑器的 onChange 只同步到另一个编辑器（不能 setItems 自己，否则会重建 DOM 中断 IME）
+    const onChangeFromInit = (items) => {
+        state.systemContentList = items;
+        if (_sceChat) _sceChat.setItems(items);
+        state.requestId = 'req_' + Date.now();
+        updateSysConfigBarSummary();
+        updateTtsRefHints();  // 系统内容变更时更新 TTS 提取验证
+    };
+    const onChangeFromChat = (items) => {
+        state.systemContentList = items;
+        if (_sceInit) _sceInit.setItems(items);
+        state.requestId = 'req_' + Date.now();
+        updateSysConfigBarSummary();
+        updateTtsRefHints();
+    };
+
+    _sceInit = new SystemContentEditor(document.getElementById('sysContentEditorInit'), {
+        theme: 'light', onChange: onChangeFromInit,
+    });
+    _sceChat = new SystemContentEditor(document.getElementById('sysContentEditorChat'), {
+        theme: 'light', onChange: onChangeFromChat,
+    });
+
+    // 设置默认内容
+    _sceInit.setItems(state.systemContentList);
+    _sceChat.setItems(state.systemContentList);
+
+    // 初始化 TTS Ref Audio 独立上传控件
+    initTtsRefAudioControls();
+
+    // 加载默认 ref audio 并填充到 audio items
+    fetchDefaultRefAudio();
+
+    // 初始化 Preset Selector（两个视图共享同一个回调）
+    initPresetSelectors();
+}
+
+function _applyTurnbasedPreset(preset, { audioLoaded } = {}) {
+    if (!preset || !preset.system_content) return;
+    const items = preset.system_content.map(item => {
+        if (item.type === 'audio') {
+            return {
+                type: 'audio',
+                data: (audioLoaded ? item.data : null) || null,
+                name: item.name || '',
+                duration: item.duration || 0,
+            };
+        }
+        return { type: 'text', text: item.text || '' };
+    });
+    state.systemContentList = items;
+    if (_sceInit) _sceInit.setItems(items);
+    if (_sceChat) _sceChat.setItems(items);
+    state.requestId = 'req_' + Date.now();
+    updateSysConfigBarSummary();
+    updateTtsRefHints();
+}
+
+let _presetInit = null, _presetChat = null;
+
+function initPresetSelectors() {
+    _presetInit = new PresetSelector({
+        container: document.getElementById('presetSelectorInit'),
+        page: 'turnbased',
+        detailsEl: document.getElementById('systemConfigCard'),
+        onSelect: (preset, opts) => {
+            _applyTurnbasedPreset(preset, opts);
+            if (_presetChat) _presetChat.select(preset.id, false);
+        },
+        storageKey: 'turnbased_preset',
+    });
+    _presetChat = new PresetSelector({
+        container: document.getElementById('presetSelectorChat'),
+        page: 'turnbased',
+        detailsEl: document.getElementById('sysConfigBar'),
+        onSelect: (preset, opts) => {
+            _applyTurnbasedPreset(preset, opts);
+            if (_presetInit) _presetInit.select(preset.id, false);
+        },
+        storageKey: 'turnbased_preset',
+    });
+    _presetInit.init();
+    _presetChat.init();
+}
+
+async function fetchDefaultRefAudio() {
+    try {
+        const resp = await fetch(API_BASE + '/api/default_ref_audio');
+        if (!resp.ok) return;
+        const data = await resp.json();
+
+        // 将默认 ref audio 填充到所有空 audio items
+        state.systemContentList.forEach((item, idx) => {
+            if (item.type === 'audio' && !item.data) {
+                item.data = data.base64;
+                item.name = data.name;
+                item.duration = data.duration;
+            }
+        });
+
+        // 刷新两个编辑器
+        if (_sceInit) _sceInit.setItems(state.systemContentList);
+        if (_sceChat) _sceChat.setItems(state.systemContentList);
+        updateSysConfigBarSummary();
+        updateTtsRefHints();  // 默认 ref audio 加载后更新 TTS 提取验证
+        console.log(`Default ref audio loaded: ${data.name} (${data.duration}s)`);
+    } catch (e) {
+        console.warn('Failed to load default ref audio:', e);
+    }
+}
+
+async function checkServiceStatus() {
+    try {
+        const resp = await fetch(`${API_BASE}/status`);
+        const data = await resp.json();
+        const el = document.getElementById('serviceStatus');
+        let text = `Workers: ${data.idle_workers}/${data.total_workers} idle`;
+        if (data.queue_length > 0) {
+            text += ` | Queue: ${data.queue_length}`;
+        }
+        el.textContent = text;
+        el.className = 'status ' + (data.idle_workers > 0 ? 'online' : 'offline');
+
+        // Chat 排队倒计时：请求 pending 且仍在队列中时，用 /status 数据驱动倒计时
+        // queue_length > 0 表示我们还在排队；=0 表示已被分配 Worker，停止更新让倒计时自然归零
+        if (_chatPending && data.idle_workers === 0 && data.queue_length > 0) {
+            const runningTasks = data.running_tasks || [];
+            const avgRemaining = runningTasks.length > 0
+                ? runningTasks.reduce((s, t) => s + (t.estimated_remaining_s ?? 15), 0) / runningTasks.length
+                : 15;
+            const estimatedWait = Math.max(1, Math.round(avgRemaining + (data.queue_length - 1) * 15));
+            queueCountdownUpdate(estimatedWait, null, data.queue_length);
+        }
+    } catch (e) {
+        const el = document.getElementById('serviceStatus');
+        el.textContent = 'Offline';
+        el.className = 'status offline';
+    }
+}
+
+// ============ 排队倒计时（Chat + Streaming 共用，状态机见 lib/countdown-timer.js） ============
+// 注：index.html 通过 <script> 而非 ES Module 加载，无法 import。
+// 这里直接内联 CountdownTimer 的逻辑（与模块保持一致），测试覆盖由 Vitest 对模块进行。
+let _chatPending = false;
+const _countdownTimer = new function CountdownTimer() {
+    this.remaining = 0;
+    this.position = null;
+    this.queueLength = null;
+    this._intervalId = null;
+    this.update = (eta, pos, total) => {
+        const newRemaining = Math.round(eta);
+        const positionChanged = pos !== null && pos !== this.position;
+
+        if (this._intervalId === null) {
+            this.remaining = newRemaining;
+            this._intervalId = setInterval(() => {
+                this.remaining = this.remaining - 1;
+                _countdownRender();
+            }, 1000);
+        } else if (positionChanged) {
+            this.remaining = newRemaining;
+        } else {
+            this.remaining = Math.min(this.remaining, newRemaining);
+        }
+
+        this.position = pos;
+        this.queueLength = total;
+        _countdownRender();
+    };
+    this.stop = () => {
+        if (this._intervalId !== null) {
+            clearInterval(this._intervalId);
+            this._intervalId = null;
+        }
+    };
+};
+
+function queueCountdownUpdate(estimatedWaitS, position, queueLength) {
+    _countdownTimer.update(estimatedWaitS, position, queueLength);
+}
+function queueCountdownStop(msg) {
+    _countdownTimer.stop();
+    _chatPending = false;
+    if (msg) updateLastAssistantMessage(msg, 'queue');
+}
+function _countdownRender() {
+    const { remaining, position, queueLength } = _countdownTimer;
+    const posStr = position != null && queueLength != null
+        ? `${position}/${queueLength}, ` : (queueLength != null ? `${queueLength} in queue, ` : '');
+    if (remaining > 0) {
+        updateLastAssistantMessage(`Queued ${posStr}~${remaining}s remaining`, 'queue');
+    } else {
+        const overtime = Math.abs(remaining);
+        updateLastAssistantMessage(`Queued ${posStr}worker busy, overtime +${overtime}s`, 'queue');
+    }
+}
+
+// ============ 视图切换 ============
+function switchToConversation() {
+    state.currentView = 'conversation';
+    document.getElementById('initialView').classList.add('hidden');
+    document.getElementById('chatView').classList.remove('hidden');
+
+    // 同步配置：content editor 已通过 onChange 回调同步
+    document.getElementById('enableStreaming').checked = document.getElementById('enableStreamingInit').checked;
+    document.getElementById('maxTokens').value = document.getElementById('maxTokensInit').value;
+    document.getElementById('lengthPenalty').value = document.getElementById('lengthPenaltyInit').value;
+    document.getElementById('enableTts').checked = document.getElementById('enableTtsInit').checked;
+    updateSysConfigBarSummary();
+
+    // 切换后 Space 键路由到 chat editor
+    _uceLastActiveEditor = state.composeEditorChat;
+}
+
+function updateSysConfigBarSummary() {
+    const el = document.getElementById('sysConfigBarSummary');
+    const parts = ['System Settings'];
+    const texts = state.systemContentList.filter(i => i.type === 'text' && i.text).length;
+    const audios = state.systemContentList.filter(i => i.type === 'audio' && i.data).length;
+    const images = state.systemContentList.filter(i => i.type === 'image' && i.data).length;
+    const videos = state.systemContentList.filter(i => i.type === 'video' && i.data).length;
+    const countParts = [];
+    if (texts > 0) countParts.push(`${texts} text`);
+    if (audios > 0) countParts.push(`${audios} audio`);
+    if (images > 0) countParts.push(`${images} image`);
+    if (videos > 0) countParts.push(`${videos} video`);
+    if (countParts.length > 0) {
+        parts.push(countParts.join(' · '));
+    }
+    // show first text snippet
+    const firstText = state.systemContentList.find(i => i.type === 'text' && i.text);
+    if (firstText) {
+        const snippet = firstText.text.substring(0, 20) + (firstText.text.length > 20 ? '...' : '');
+        parts.push(`"${snippet}"`);
+    }
+    el.textContent = parts.join(' · ');
+}
+
+// (Ref Audio 管理已集成到 SystemContentEditor 组件中)
+
+/** Show/hide max_kv input based on mode (only for streaming, not chat) */
+function updateMaxKvVisibility() {
+    const streaming = document.getElementById('enableStreaming')?.checked;
+    const group = document.getElementById('maxKvGroup');
+    if (group) group.style.display = streaming ? '' : 'none';
+}
+document.addEventListener('DOMContentLoaded', () => {
+    ['enableStreamingInit', 'enableStreaming'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', updateMaxKvVisibility);
+    });
+    updateMaxKvVisibility();
+    initDataTipTooltips();
+});
+
+/**
+ * JS-positioned tooltip for [data-tip] elements (same as Duplex pages).
+ * Follows cursor, position: fixed — never clipped by viewport.
+ */
+function initDataTipTooltips() {
+    let popup = null;
+    function show(target, e) {
+        const tip = target.getAttribute('data-tip');
+        if (!tip) return;
+        if (!popup) {
+            popup = document.createElement('div');
+            popup.className = 'data-tip-popup';
+            document.body.appendChild(popup);
+        }
+        popup.textContent = tip;
+        position(e);
+        popup.style.display = 'block';
+    }
+    function position(e) {
+        if (!popup) return;
+        const x = Math.min(e.clientX + 12, window.innerWidth - 360);
+        const y = e.clientY + 16;
+        popup.style.left = Math.max(4, x) + 'px';
+        popup.style.top = y + 'px';
+    }
+    function hide() { if (popup) popup.style.display = 'none'; }
+    document.addEventListener('mouseover', (e) => {
+        const t = e.target.closest('[data-tip]');
+        if (t) show(t, e);
+    });
+    document.addEventListener('mousemove', (e) => {
+        const t = e.target.closest('[data-tip]');
+        if (t) position(e); else hide();
+    });
+    document.addEventListener('mouseout', (e) => {
+        const t = e.target.closest('[data-tip]');
+        if (t && !t.contains(e.relatedTarget)) hide();
+    });
+}
+
+/** 读取 Max KV Tokens 限制（默认 8192） */
+function getMaxKvTokens() {
+    const el = document.getElementById('maxKvTokens');
+    return el ? Math.max(512, parseInt(el.value, 10) || 8192) : 8192;
+}
+
+// ============ 消息 UI ============
+function addMessageUI(role, content, meta = '', audioAttachments = [], msgIndex = -1) {
+    const messagesEl = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    div.dataset.msgIndex = msgIndex;
+
+    // 获取完整 content list（用于 user 消息渲染）
+    const msg = msgIndex >= 0 ? state.messages[msgIndex] : null;
+    const rawContent = msg ? msg.content : content;
+
+    // 判断是否有可渲染的内容
+    const isUserContentList = role === 'user' && Array.isArray(rawContent);
+    let hasVisibleContent = false;
+
+    if (isUserContentList) {
+        // 检查 content list 是否有可渲染项
+        hasVisibleContent = rawContent.some(it =>
+            (it.type === 'text' && it.text) || (it.type === 'audio' && it.data) || (it.type === 'image' && it.data) || (it.type === 'video' && it.data)
+        );
+    } else {
+        const textContent = typeof rawContent === 'string' ? rawContent : (content || '');
+        hasVisibleContent = !!(textContent && textContent.trim());
+    }
+
+    div.innerHTML = `
+        <div class="avatar">${role === 'user' ? 'U' : 'M'}</div>
+        <div class="msg-body">
+            ${hasVisibleContent ? '<div class="content"></div>' : ''}
+            ${meta ? `<div class="meta">${meta}</div>` : ''}
+        </div>
+    `;
+    messagesEl.appendChild(div);
+
+    const bodyDiv = div.querySelector('.msg-body');
+    const contentEl = bodyDiv.querySelector('.content');
+
+    // User 消息：渲染 content list（text + audio + image）
+    if (isUserContentList && contentEl) {
+        contentEl.classList.add('msg-content-items');
+        for (const item of rawContent) {
+            if (item.type === 'text' && item.text) {
+                const p = document.createElement('div');
+                p.className = 'msg-ci-text';
+                p.textContent = item.text;
+                contentEl.appendChild(p);
+            } else if (item.type === 'audio' && item.data) {
+                const wrap = document.createElement('div');
+                wrap.className = 'msg-ci-audio';
+                wrap.appendChild(createMiniPlayer(item.data, 16000));
+                const dlBtn = createDlBtn(() => {
+                    const player = wrap.querySelector('.mini-player');
+                    if (player && player._audioBuffer) downloadAudioBuffer(player._audioBuffer, item.name || 'user_audio.wav');
+                });
+                wrap.appendChild(dlBtn);
+                contentEl.appendChild(wrap);
+            } else if (item.type === 'image' && item.data) {
+                const wrap = document.createElement('div');
+                wrap.className = 'msg-ci-image';
+                const img = document.createElement('img');
+                img.src = 'data:image/png;base64,' + item.data;
+                img.alt = item.name || 'image';
+                img.title = item.name || 'Image';
+                img.addEventListener('click', () => window.open(img.src, '_blank'));
+                wrap.appendChild(img);
+                const dlBtn = createDlBtn(() => downloadBase64AsFile(item.data, item.name || 'image.png', 'image/png'));
+                wrap.appendChild(dlBtn);
+                contentEl.appendChild(wrap);
+            } else if (item.type === 'video' && item.data) {
+                const wrap = document.createElement('div');
+                wrap.className = 'msg-ci-video';
+                const video = document.createElement('video');
+                video.controls = true;
+                video.preload = 'metadata';
+                video.src = 'data:video/mp4;base64,' + item.data;
+                video.title = item.name || 'Video';
+                wrap.appendChild(video);
+                const dlBtn = createDlBtn(() => downloadBase64AsFile(item.data, item.name || 'video.mp4', 'video/mp4'));
+                wrap.appendChild(dlBtn);
+                contentEl.appendChild(wrap);
+            }
+        }
+    } else if (contentEl) {
+        // 普通字符串消息
+        const textContent = typeof rawContent === 'string' ? rawContent : (content || '');
+        contentEl.textContent = textContent;
+    }
+
+    // 兼容旧的 audioAttachments（非 content list 形式）
+    if (!isUserContentList && audioAttachments && audioAttachments.length > 0) {
+        const metaEl = bodyDiv.querySelector('.meta');
+        for (const att of audioAttachments) {
+            const player = createMiniPlayer(att.data, 16000);
+            if (metaEl) {
+                bodyDiv.insertBefore(player, metaEl);
+            } else {
+                bodyDiv.appendChild(player);
+            }
+        }
+    }
+
+    // User 消息：添加 Edit + Resend 按钮（竖排、常驻）
+    if (role === 'user' && msgIndex >= 0) {
+        const actionsCol = document.createElement('div');
+        actionsCol.className = 'msg-actions-col';
+
+        // Edit 按钮（铅笔 icon）
+        const editBtn = document.createElement('button');
+        editBtn.className = 'msg-action-btn';
+        editBtn.title = 'Edit';
+        editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
+        editBtn.addEventListener('click', () => startEditMessage(msgIndex));
+        actionsCol.appendChild(editBtn);
+
+        // Resend 按钮（回退箭头 icon）
+        const resendBtn = document.createElement('button');
+        resendBtn.className = 'msg-action-btn resend-btn';
+        resendBtn.title = 'Resend from here';
+        resendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
+        resendBtn.addEventListener('click', () => resendFromMessage(msgIndex));
+        actionsCol.appendChild(resendBtn);
+
+        div.appendChild(actionsCol);
+    }
+
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+}
+
+function renderAllMessages() {
+    const messagesEl = document.getElementById('messages');
+    messagesEl.innerHTML = '';
+    state.messages.forEach((msg, i) => {
+        // addMessageUI 内部会从 state.messages[i].content 读取完整 content list
+        addMessageUI(msg.role, msg.displayText || (typeof msg.content === 'string' ? msg.content : ''), '', msg.audioAttachments || [], i);
+    });
+}
+
+function updateLastAssistantMessage(content, meta = '') {
+    const msgs = document.querySelectorAll('.message.assistant');
+    const last = msgs[msgs.length - 1];
+    if (last) {
+        let contentEl = last.querySelector('.content');
+        // 如果 .content 不存在（初始占位无文本时未渲染），动态创建
+        if (!contentEl) {
+            contentEl = document.createElement('div');
+            contentEl.className = 'content';
+            const bodyEl = last.querySelector('.msg-body');
+            bodyEl.insertBefore(contentEl, bodyEl.firstChild);
+        }
+        contentEl.textContent = content.replace(/\\n/g, '\n');
+        contentEl.style.whiteSpace = 'pre-wrap';
+        // 确保可见（可能初始时被隐藏）
+        if (content) contentEl.style.display = '';
+        // 系统日志样式（DRY：queue 和 error 共享 .is-system-log 基类）
+        contentEl.classList.remove('is-system-log', 'is-error');
+        if (meta === 'error') {
+            contentEl.classList.add('is-system-log', 'is-error');
+        } else if (meta === 'queue') {
+            contentEl.classList.add('is-system-log');
+        }
+        if (meta && meta !== 'error' && meta !== 'queue') {
+            let metaEl = last.querySelector('.meta');
+            if (!metaEl) {
+                metaEl = document.createElement('div');
+                metaEl.className = 'meta';
+                last.querySelector('.msg-body').appendChild(metaEl);
+            }
+            metaEl.textContent = meta;
+        }
+    }
+}
+
+/**
+ * 构建结构化 meta 信息（三行展示：总时间 → 时间分解 → token 信息）
+ *
+ * 时间概念：
+ *   Total     — 用户体感总等候时间（发出请求 → 收到完整响应）
+ *   Queue est — 后端最初预估的排队时间
+ *   Queue     — 真实排队时间（排队开始 → Worker 分配）
+ *   TTFS      — 首响时间（Worker 分配 → 第一个 chunk 到达前端，仅 streaming）
+ *   Generate  — 流式生成耗时（第一个 chunk → 最后一个 chunk，仅 streaming）
+ *   Process   — 任务处理时间（Worker 分配 → 完成，仅 chat 无 TTFS 时 fallback）
+ *
+ *   关系：Total ≈ Queue + TTFS + Generate（三段不重叠）
+ *
+ * @param {object} opts
+ * @param {string} opts.mode - 'chat' | 'streaming'
+ * @param {number} opts.totalMs - 用户体感总耗时 ms
+ * @param {number} [opts.queueEstS] - 后端预估排队时间 s（null = 无排队）
+ * @param {number} [opts.queueActualMs] - 真实排队时间 ms（null = 无排队）
+ * @param {number} [opts.ttfsMs] - 首响时间 ms（Worker → 第一个 chunk，仅 streaming）
+ * @param {number} [opts.processMs] - 任务处理时间 ms（Worker → 完成）
+ * @param {number} [opts.inputTokens]
+ * @param {number} [opts.cachedTokens]
+ * @param {number} [opts.generatedTokens]
+ * @param {number} [opts.chunks]
+ * @param {boolean} [opts.hasAudio]
+ * @param {boolean} [opts.stopped]
+ * @param {string} [opts.requestId]
+ */
+function updateLastAssistantMeta(opts) {
+    const msgs = document.querySelectorAll('.message.assistant');
+    const last = msgs[msgs.length - 1];
+    if (!last) return;
+
+    let metaEl = last.querySelector('.meta');
+    if (!metaEl) {
+        metaEl = document.createElement('div');
+        metaEl.className = 'meta';
+        last.querySelector('.msg-body').appendChild(metaEl);
+    }
+    metaEl.innerHTML = '';
+
+    const fmt = (ms) => {
+        if (ms == null) return '—';
+        if (ms < 1000) return `${Math.round(ms)}ms`;
+        return `${(ms / 1000).toFixed(1)}s`;
+    };
+    const sep = ' <span class="meta-sep">·</span> ';
+    const label = (l, v) => `<span class="meta-label">${l}</span> <span class="meta-value">${v}</span>`;
+
+    const modeBadge = opts.mode === 'chat' ? 'chat' : 'streaming';
+    const hadQueue = opts.queueActualMs != null && opts.queueActualMs > 200;
+
+    // === Line 1: [mode] Total ===
+    const line1 = document.createElement('div');
+    line1.className = 'meta-line';
+    let l1Parts = [label('Total', fmt(opts.totalMs))];
+    if (opts.stopped) l1Parts.push(`<span class="meta-value" style="color:#e67700;">[stopped]</span>`);
+    line1.innerHTML = `<span class="meta-value" style="color:#aaa;">[${modeBadge}]</span> ${l1Parts.join(sep)}`;
+    metaEl.appendChild(line1);
+
+    // === Line 2: Timing breakdown ===
+    const line2 = document.createElement('div');
+    line2.className = 'meta-line';
+    let l2Parts = [];
+
+    if (hadQueue) {
+        const estStr = opts.queueEstS != null ? `~${opts.queueEstS}s est → ` : '';
+        l2Parts.push(`<span class="meta-label">Queue</span> <span class="meta-value">${estStr}${fmt(opts.queueActualMs)}</span>`);
+    }
+    if (opts.ttfsMs != null) {
+        l2Parts.push(label('TTFS', fmt(opts.ttfsMs)));
+    }
+    if (opts.ttfsMs != null && opts.processMs != null) {
+        l2Parts.push(label('Generate', fmt(opts.processMs - opts.ttfsMs)));
+    } else if (opts.processMs != null) {
+        l2Parts.push(label('Process', fmt(opts.processMs)));
+    }
+
+    if (l2Parts.length > 0) {
+        line2.innerHTML = l2Parts.join(sep);
+        metaEl.appendChild(line2);
+    }
+
+    // === Line 3: Tokens + Request ID ===
+    const line3 = document.createElement('div');
+    line3.className = 'meta-line';
+
+    let tokenParts = [];
+    if (opts.inputTokens != null && opts.inputTokens > 0) {
+        let inStr = label('In', opts.inputTokens);
+        if (opts.cachedTokens > 0) {
+            inStr += ` <span class="meta-value" style="color:#bbb;">(${opts.cachedTokens} cached)</span>`;
+        }
+        tokenParts.push(inStr);
+    }
+    if (opts.generatedTokens != null && opts.generatedTokens > 0) {
+        tokenParts.push(label('Gen', opts.generatedTokens));
+    }
+    if (opts.chunks != null && opts.chunks > 0) {
+        tokenParts.push(label('Chunks', opts.chunks));
+    }
+    if (opts.hasAudio) tokenParts.push(`<span class="meta-value">🔊</span>`);
+
+    if (tokenParts.length > 0) {
+        line3.innerHTML = tokenParts.join(sep);
+    }
+
+    if (opts.requestId) {
+        const rid = document.createElement('span');
+        rid.className = 'meta-rid';
+        rid.textContent = opts.requestId;
+        rid.title = `Click to copy: ${opts.requestId}`;
+        rid.addEventListener('click', () => {
+            navigator.clipboard.writeText(opts.requestId).then(() => {
+                rid.classList.add('copied');
+                const orig = rid.textContent;
+                rid.textContent = 'Copied!';
+                setTimeout(() => { rid.textContent = orig; rid.classList.remove('copied'); }, 1200);
+            });
+        });
+        line3.appendChild(rid);
+    }
+
+    if (line3.childNodes.length > 0) metaEl.appendChild(line3);
+}
+
+function escapeHtml(text) {
+    if (typeof text !== 'string') text = String(text);
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function cancelGeneration() {
+    if (!state.isGenerating) return;
+    const phase = state.generationPhase;
+
+    // --- Chat mode: always abort fetch ---
+    if (state.abortController) {
+        state.abortController.abort();
+        state.abortController = null;
+    }
+
+    // --- Streaming mode: phase-aware ---
+    if (state.streamingWs) {
+        if (phase === 'generating') {
+            // Graceful stop: tell worker to stop, let normal 'done' handler clean up
+            fetch(`${API_BASE}/api/streaming/stop`, { method: 'POST' }).catch(() => {});
+            // Don't close WS — server will send 'done' with stopped: true
+            return;
+        }
+        // Queuing phase: cancel ticket + close WS immediately
+        if (state.currentTicketId) {
+            fetch(`${API_BASE}/api/queue/${state.currentTicketId}`, { method: 'DELETE' }).catch(() => {});
+        }
+        try { state.streamingWs.close(); } catch (_) {}
+        state.streamingWs = null;
+    }
+
+    queueCountdownStop();
+    setGenerating(false);
+    _cleanupLastAssistantMessage();
+}
+
+function _cleanupLastAssistantMessage() {
+    const msgEls = document.querySelectorAll('.message.assistant');
+    const lastEl = msgEls[msgEls.length - 1];
+    if (!lastEl) return;
+    const contentEl = lastEl.querySelector('.content');
+    const text = contentEl?.textContent?.trim() || '';
+    const isPlaceholder = !text || text === '...' || contentEl?.classList.contains('is-system-log');
+
+    if (isPlaceholder) {
+        lastEl.remove();
+    } else {
+        state.messages.push({ role: 'assistant', content: text, displayText: text });
+        updateLastAssistantMeta({ mode: 'cancelled', totalMs: 0 });
+    }
+}
+
+function setGenerating(isGenerating) {
+    state.isGenerating = isGenerating;
+    if (!isGenerating) {
+        state.generationPhase = 'idle';
+        state.currentTicketId = null;
+    }
+    const btn = document.getElementById('sendBtn');
+    if (btn) btn.disabled = isGenerating;
+    document.getElementById('typingIndicator').className =
+        'typing-indicator' + (isGenerating ? ' active' : '');
+    updateCancelStopButton();
+    document.querySelectorAll('.msg-actions-col .msg-action-btn').forEach(b => {
+        b.disabled = isGenerating;
+    });
+}
+
+function updateCancelStopButton() {
+    const btn = document.getElementById('btnCancelStop');
+    if (!btn) return;
+    if (state.generationPhase === 'generating') {
+        btn.textContent = '■ Stop';
+    } else {
+        btn.textContent = '✕ Cancel';
+    }
+}
+
+// ============ 消息编辑（UserContentEditor inline, Save-only） ============
+
+function startEditMessage(index) {
+    if (state.isGenerating) return;
+    if (state.editingIndex >= 0) cancelEditMessage(state.editingIndex);
+    state.editingIndex = index;
+    const msg = state.messages[index];
+
+    // 构建 content list 供编辑器使用
+    let editItems;
+    if (Array.isArray(msg.content)) {
+        editItems = msg.content.map(it => ({ ...it }));
+    } else {
+        // 旧格式：纯文本 + audioAttachments → 合成 content list
+        editItems = [];
+        const text = msg.displayText || (typeof msg.content === 'string' ? msg.content : '');
+        if (text) editItems.push({ type: 'text', text });
+        if (msg.audioAttachments) {
+            for (const att of msg.audioAttachments) {
+                editItems.push({ type: 'audio', data: att.data, name: att.name || 'audio' });
+            }
+        }
+    }
+
+    const msgEl = document.querySelector(`.message[data-msg-index="${index}"]`);
+    if (!msgEl) return;
+
+    const bodyEl = msgEl.querySelector('.msg-body');
+    const contentEl = bodyEl.querySelector('.content');
+
+    // 隐藏原始内容和音频播放器
+    if (contentEl) contentEl.style.display = 'none';
+    bodyEl.querySelectorAll('.audio-ctrl').forEach(el => el.style.display = 'none');
+    bodyEl.querySelectorAll('.mini-player').forEach(el => el.style.display = 'none');
+
+    // 创建编辑器容器
+    const editorWrap = document.createElement('div');
+    editorWrap.className = 'msg-edit-editor-wrap';
+    bodyEl.insertBefore(editorWrap, contentEl);
+
+    // 创建 UserContentEditor 实例（Save/Cancel 集成在 UCE 底栏）
+    const editor = new UserContentEditor(editorWrap, {
+        onChange: () => {},
+        onSubmit: () => saveEditMessage(index),
+        onCancel: () => cancelEditMessage(index),
+        showImageBtn: false,
+    });
+    editor.setItems(editItems);
+    state._editEditor = editor;
+}
+
+function cancelEditMessage(index) {
+    state.editingIndex = -1;
+    if (state._editEditor) {
+        state._editEditor.destroy();
+        state._editEditor = null;
+    }
+    const msgEl = document.querySelector(`.message[data-msg-index="${index}"]`);
+    if (!msgEl) return;
+    const bodyEl = msgEl.querySelector('.msg-body');
+    const editorWrap = bodyEl.querySelector('.msg-edit-editor-wrap');
+    if (editorWrap) editorWrap.remove();
+    const contentEl = bodyEl.querySelector('.content');
+    if (contentEl) contentEl.style.display = '';
+    bodyEl.querySelectorAll('.audio-ctrl').forEach(el => el.style.display = '');
+    bodyEl.querySelectorAll('.mini-player').forEach(el => el.style.display = '');
+}
+
+async function saveEditMessage(index) {
+    if (!state._editEditor) return;
+
+    // 从编辑器获取当前 items（保留 _blob / file 引用）
+    const items = state._editEditor.getItems();
+
+    // 过滤有效 items（text 有文字 / audio 有 data、blob、file 或 name / image 有 data、file 或 objectUrl）
+    const validItems = items.filter(it => {
+        if (it.type === 'text') return it.text && it.text.trim();
+        if (it.type === 'audio') return it.data || it._blob || it.file || it.objectUrl;
+        if (it.type === 'image') return it.data || it.file || it.objectUrl;
+        if (it.type === 'video') return it.data || it.file || it.objectUrl;
+        return false;
+    });
+
+    if (validItems.length === 0) return; // 不允许保存空内容
+
+    // 将录音 / 上传的音频转换为 base64（16kHz PCM float32）
+    for (const it of validItems) {
+        if (it.type !== 'audio') continue;
+        if (it.data) continue; // 已有 base64，无需转换
+
+        let source = it._blob || it.file;
+        if (!source && it.objectUrl) {
+            try {
+                const resp = await fetch(it.objectUrl);
+                source = await resp.blob();
+            } catch (e) {
+                console.warn('Failed to fetch audio blob:', e);
+                continue;
+            }
+        }
+        if (source) {
+            try {
+                it.data = await convertToWav16k(source);
+                it.name = it.name || 'audio';
+            } catch (e) {
+                console.warn('Failed to convert audio:', e);
+            }
+        }
+    }
+
+    // 将图片 file/blob 转换为 base64
+    for (const it of validItems) {
+        if (it.type !== 'image') continue;
+        if (it.data) continue;
+
+        let source = it.file;
+        if (!source && it.objectUrl) {
+            try {
+                const resp = await fetch(it.objectUrl);
+                source = await resp.blob();
+            } catch (e) {
+                console.warn('Failed to fetch image blob:', e);
+                continue;
+            }
+        }
+        if (source) {
+            try {
+                it.data = await blobToBase64(source);
+                it.name = it.name || 'image';
+            } catch (e) {
+                console.warn('Failed to convert image:', e);
+            }
+        }
+    }
+
+    // 清理临时字段，只保留 type/text/data/name/duration
+    const cleanItems = validItems.map(it => {
+        if (it.type === 'text') return { type: 'text', text: it.text };
+        if (it.type === 'audio') return { type: 'audio', data: it.data, name: it.name, duration: it.duration };
+        if (it.type === 'image') return { type: 'image', data: it.data, name: it.name };
+        if (it.type === 'video') return { type: 'video', data: it.data, name: it.name, duration: it.duration };
+        return it;
+    });
+
+    // 更新 state.messages
+    state.messages[index].content = cleanItems;
+
+    // 更新 displayText（所有文本项拼接）
+    state.messages[index].displayText = cleanItems
+        .filter(it => it.type === 'text')
+        .map(it => it.text)
+        .join('\n');
+
+    // 更新 audioAttachments（所有音频项）
+    state.messages[index].audioAttachments = cleanItems
+        .filter(it => it.type === 'audio' && it.data)
+        .map(it => ({ data: it.data, name: it.name || 'audio' }));
+
+    // cache 失效
+    state.requestId = 'req_' + Date.now();
+
+    // 关闭编辑器、重新渲染该消息
+    state.editingIndex = -1;
+    if (state._editEditor) {
+        state._editEditor.destroy();
+        state._editEditor = null;
+    }
+    renderAllMessages();
+}
+
+// ============ 从某条 User 消息处重新发送 ============
+function resendFromMessage(index) {
+    if (state.isGenerating) return;
+    // 如果正在编辑，先取消编辑
+    if (state.editingIndex >= 0) cancelEditMessage(state.editingIndex);
+
+    // 截断该消息之后的所有消息
+    state.messages = state.messages.slice(0, index + 1);
+    state.requestId = 'req_' + Date.now();
+    renderAllMessages();
+
+    // 发送
+    const mode = document.getElementById('enableStreaming')?.checked ? 'streaming' : 'chat';
+    const maxTokens = parseInt(document.getElementById('maxTokens').value) || 256;
+    if (mode === 'chat') {
+        sendChatMessage(maxTokens);
+    } else {
+        sendStreamingMessage(maxTokens);
+    }
+}
+
+// ============ 录音（Push-to-Talk + Toggle + 计时器 + ESC 取消） ============
+
+// (旧的录音状态变量已移除，录音由 UserContentEditor 内部管理)
+
+/**
+ * 开始/停止录音
+ * @param {string} ctx - 'init' | 'chat'
+ * @param {boolean} cancel - 是否取消（ESC 丢弃录音）
+ */
+// 旧的 toggleRecording / timer 已移除，录音功能完全由 UserContentEditor 处理。
+
+// ============ 全局快捷键 ============
+// Space/ESC 录音快捷键完全由 UserContentEditor (_uceInitRecordingShortcuts) 处理。
+// 无需额外全局处理器。
+
+// 旧的 handleFileUpload / addAttachment / removeAttachment / renderAttachments / buildContentList 已移除。
+// 文件上传和附件管理完全由 UserContentEditor 处理。
+
+async function convertToWav16k(blobOrFile) {
+    const arrayBuffer = await blobOrFile.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+    const offlineCtx = new OfflineAudioContext(1, Math.ceil(decoded.duration * 16000), 16000);
+    const source = offlineCtx.createBufferSource();
+    source.buffer = decoded;
+    source.connect(offlineCtx.destination);
+    source.start();
+    const resampled = await offlineCtx.startRendering();
+    audioCtx.close();
+    const pcm = resampled.getChannelData(0);
+    const bytes = new Uint8Array(pcm.buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+}
+
+/** Convert a Blob/File to standard base64 string (strips data URL prefix) */
+function blobToBase64(blobOrFile) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            // reader.result = "data:image/png;base64,iVBOR..."
+            const dataUrl = reader.result;
+            const base64 = dataUrl.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blobOrFile);
+    });
+}
+
+// 附件管理
+// (旧的 addAttachment / removeAttachment / renderAttachments / buildContentList 已移除)
+
+// ============ 构建请求消息列表（含 system） ============
+function buildRequestMessages() {
+    const msgs = [];
+
+    // System message：直接发送 content list 格式
+    // 格式：[{type:"text", text:...}, {type:"audio", data:...}, {type:"image", data:...}, ...]
+    const sysContent = [];
+    for (const item of state.systemContentList) {
+        if (item.type === 'text' && item.text) {
+            sysContent.push({ type: 'text', text: item.text });
+        } else if (item.type === 'audio' && item.data) {
+            sysContent.push({ type: 'audio', data: item.data });
+        } else if (item.type === 'image' && item.data) {
+            sysContent.push({ type: 'image', data: item.data });
+        } else if (item.type === 'video' && item.data) {
+            sysContent.push({ type: 'video', data: item.data, duration: item.duration });
+        }
+    }
+    if (sysContent.length > 0) {
+        msgs.push({ role: 'system', content: sysContent });
+    }
+
+    // 历史消息
+    for (const m of state.messages) {
+        msgs.push({ role: m.role, content: m.content });
+    }
+
+    return msgs;
+}
+
+// ============ TTS Ref Audio 管理 ============
+
+let _ttsRapInit = null, _ttsRapChat = null;
+
+/**
+ * 验证是否可以从系统轮提取 TTS ref audio。
+ * 条件：恰好 1 个有数据的 audio item 且时长 < 20s。
+ * @returns {{ ok: boolean, data: string|null, reason: string }}
+ */
+function canExtractTtsRefFromSystem() {
+    const audioItems = state.systemContentList.filter(i => i.type === 'audio' && i.data);
+    if (audioItems.length === 0) {
+        return { ok: false, data: null, reason: 'System content has no audio' };
+    }
+    if (audioItems.length > 1) {
+        return { ok: false, data: null, reason: `System content has ${audioItems.length} audios (need exactly 1)` };
+    }
+    const item = audioItems[0];
+    if (item.duration && item.duration > 20) {
+        return { ok: false, data: null, reason: `Audio too long (${item.duration.toFixed(1)}s > 20s)` };
+    }
+    return { ok: true, data: item.data, reason: '' };
+}
+
+/** 获取当前 TTS ref audio base64 数据 */
+function getTtsRefAudioBase64() {
+    if (state.ttsRefAudioMode === 'extract') {
+        const result = canExtractTtsRefFromSystem();
+        return result.ok ? result.data : null;
+    }
+    return state.ttsRefAudioData;
+}
+
+/** 更新两个视图的 TTS 提取验证提示 */
+function updateTtsRefHints() {
+    const result = canExtractTtsRefFromSystem();
+    for (const suffix of ['Init', 'Chat']) {
+        const hintEl = document.getElementById('ttsRefHint' + suffix);
+        if (!hintEl) continue;
+        if (state.ttsRefAudioMode === 'extract') {
+            if (result.ok) {
+                hintEl.textContent = 'Will use the audio from System Content';
+                hintEl.className = 'tts-ref-hint';
+            } else {
+                hintEl.textContent = result.reason + ' — please upload independently';
+                hintEl.className = 'tts-ref-hint warning';
+            }
+        } else {
+            hintEl.textContent = state.ttsRefAudioData
+                ? `Independent: ${state.ttsRefAudioName || 'uploaded'}`
+                : 'Please upload a TTS reference audio';
+            hintEl.className = 'tts-ref-hint' + (state.ttsRefAudioData ? '' : ' warning');
+        }
+    }
+}
+
+/** radio 切换回调 */
+function onTtsRefModeChange() {
+    // 读取当前选中的 mode（两个 radio group 同步）
+    const initRadio = document.querySelector('input[name="ttsRefModeInit"]:checked');
+    const chatRadio = document.querySelector('input[name="ttsRefModeChat"]:checked');
+    const mode = (initRadio || chatRadio)?.value || 'extract';
+    state.ttsRefAudioMode = mode;
+
+    // 同步两组 radio
+    for (const name of ['ttsRefModeInit', 'ttsRefModeChat']) {
+        const radio = document.querySelector(`input[name="${name}"][value="${mode}"]`);
+        if (radio) radio.checked = true;
+    }
+
+    // 显示/隐藏独立上传控件
+    for (const suffix of ['Init', 'Chat']) {
+        const uploadEl = document.getElementById('ttsRefUpload' + suffix);
+        if (uploadEl) uploadEl.style.display = mode === 'independent' ? '' : 'none';
+    }
+
+    updateTtsRefHints();
+}
+
+/** 初始化 TTS Ref Audio 独立上传控件（两个 RefAudioPlayer 实例） */
+function initTtsRefAudioControls() {
+    const onUpload = (base64, name, duration) => {
+        state.ttsRefAudioData = base64;
+        state.ttsRefAudioName = name;
+        state.ttsRefAudioDuration = duration;
+        // 同步两个 player 的显示
+        if (_ttsRapInit) _ttsRapInit.setAudio(base64, name, duration);
+        if (_ttsRapChat) _ttsRapChat.setAudio(base64, name, duration);
+        updateTtsRefHints();
+    };
+    const onRemove = () => {
+        state.ttsRefAudioData = null;
+        state.ttsRefAudioName = '';
+        state.ttsRefAudioDuration = 0;
+        if (_ttsRapInit) _ttsRapInit.clear();
+        if (_ttsRapChat) _ttsRapChat.clear();
+        updateTtsRefHints();
+    };
+
+    const rapOpts = { theme: 'light', onUpload, onRemove };
+    _ttsRapInit = new RefAudioPlayer(document.getElementById('ttsRefUploadInit'), rapOpts);
+    _ttsRapChat = new RefAudioPlayer(document.getElementById('ttsRefUploadChat'), rapOpts);
+
+    // 初始验证提示
+    updateTtsRefHints();
+}
+
+// ============ 发送首条消息 ============
+/**
+ * 从 UserContentEditor items 构建最终 content list（含 base64 音频转换）
+ * @param {Array} items - editor.getItems() 返回的 items
+ * @returns {Promise<{content: string|Array, displayText: string, audioAttachments: Array}>}
+ */
+async function buildContentFromEditorItems(items) {
+    // 过滤有效 items
+    const valid = items.filter(it => {
+        if (it.type === 'text') return it.text && it.text.trim();
+        if (it.type === 'audio') return it.data || it._blob || it.file || it.objectUrl;
+        if (it.type === 'image') return it.data || it.file || it.objectUrl;
+        if (it.type === 'video') return it.data || it.file || it.objectUrl;
+        return false;
+    });
+
+    if (valid.length === 0) return null;
+
+    // 转换音频 blob → base64（16kHz PCM float32）
+    for (const it of valid) {
+        if (it.type !== 'audio' || it.data) continue;
+        let source = it._blob || it.file;
+        if (!source && it.objectUrl) {
+            try { const r = await fetch(it.objectUrl); source = await r.blob(); } catch(e) { continue; }
+        }
+        if (source) {
+            try { it.data = await convertToWav16k(source); it.name = it.name || 'audio'; } catch(e) { console.warn('Audio convert failed:', e); }
+        }
+    }
+
+    // 转换图片 file/blob → base64（标准 base64 编码）
+    for (const it of valid) {
+        if (it.type !== 'image' || it.data) continue;
+        let source = it.file;
+        if (!source && it.objectUrl) {
+            try { const r = await fetch(it.objectUrl); source = await r.blob(); } catch(e) { continue; }
+        }
+        if (source) {
+            try {
+                it.data = await blobToBase64(source);
+                it.name = it.name || 'image';
+            } catch(e) { console.warn('Image convert failed:', e); }
+        }
+    }
+
+    // 转换视频 file/blob → base64
+    for (const it of valid) {
+        if (it.type !== 'video' || it.data) continue;
+        let source = it.file;
+        if (!source && it.objectUrl) {
+            try { const r = await fetch(it.objectUrl); source = await r.blob(); } catch(e) { continue; }
+        }
+        if (source) {
+            try {
+                it.data = await blobToBase64(source);
+                it.name = it.name || 'video';
+            } catch(e) { console.warn('Video convert failed:', e); }
+        }
+    }
+
+    // 清理临时字段
+    const cleaned = valid.map(it => {
+        if (it.type === 'text') return { type: 'text', text: it.text };
+        if (it.type === 'audio') return { type: 'audio', data: it.data, name: it.name, duration: it.duration };
+        if (it.type === 'image') return { type: 'image', data: it.data, name: it.name };
+        if (it.type === 'video') return { type: 'video', data: it.data, name: it.name, duration: it.duration };
+        return it;
+    }).filter(it => {
+        if (it.type === 'audio') return !!it.data;
+        if (it.type === 'image') return !!it.data;
+        if (it.type === 'video') return !!it.data;
+        return true;
+    });
+
+    if (cleaned.length === 0) return null;
+
+    const displayText = cleaned.filter(it => it.type === 'text').map(it => it.text).join('\n');
+    const audioAttachments = cleaned.filter(it => it.type === 'audio' && it.data).map(it => ({ data: it.data, name: it.name || 'audio' }));
+
+    // 如果只有纯文本（无音频/图片/视频），content 用字符串格式（兼容性）
+    const hasMultimodal = cleaned.some(it => it.type === 'audio' || it.type === 'image' || it.type === 'video');
+    const content = hasMultimodal ? cleaned : (displayText || '');
+
+    return { content, displayText, audioAttachments };
+}
+
+async function sendFirstMessage() {
+    const editor = state.composeEditorInit;
+    const items = editor.getItems();
+    const result = await buildContentFromEditorItems(items);
+    if (!result) return;
+
+    // 切换到对话视图
+    switchToConversation();
+
+    // 清空编辑器
+    editor.setItems([]);
+
+    const { content, displayText, audioAttachments } = result;
+    state.messages.push({ role: 'user', content, displayText, audioAttachments });
+    addMessageUI('user', displayText, '', audioAttachments, state.messages.length - 1);
+
+    // 切换后使用 chat 视图的参数
+    const mode = document.getElementById('enableStreaming')?.checked ? 'streaming' : 'chat';
+    const maxTokens = parseInt(document.getElementById('maxTokens').value) || 256;
+
+    if (mode === 'chat') {
+        sendChatMessage(maxTokens);
+    } else {
+        sendStreamingMessage(maxTokens);
+    }
+}
+
+// ============ 发送消息（对话视图） ============
+async function sendMessage() {
+    if (state.isGenerating) return;
+
+    const editor = state.composeEditorChat;
+    const items = editor.getItems();
+    const result = await buildContentFromEditorItems(items);
+    if (!result) return;
+
+    // 清空编辑器
+    editor.setItems([]);
+
+    const { content, displayText, audioAttachments } = result;
+    state.messages.push({ role: 'user', content, displayText, audioAttachments });
+    addMessageUI('user', displayText, '', audioAttachments, state.messages.length - 1);
+
+    const mode = document.getElementById('enableStreaming')?.checked ? 'streaming' : 'chat';
+    const maxTokens = parseInt(document.getElementById('maxTokens').value) || 256;
+
+    if (mode === 'chat') {
+        await sendChatMessage(maxTokens);
+    } else {
+        await sendStreamingMessage(maxTokens);
+    }
+}
+
+// ============ 统一 Chat WebSocket 通信 ============
+function _buildChatWSBody(maxTokens, streaming) {
+    const allMessages = buildRequestMessages();
+    const hasVideo = allMessages.some(m =>
+        Array.isArray(m.content) && m.content.some(it => it.type === 'video' && it.data)
+    );
+    const enableTts = getEnableTts();
+
+    const body = {
+        messages: allMessages,
+        streaming: streaming,
+        generation: {
+            max_new_tokens: maxTokens,
+            do_sample: true,
+            length_penalty: parseFloat(document.getElementById('lengthPenalty').value) || 1.1,
+        },
+        image: { max_slice_nums: hasVideo ? 1 : getHDMaxSliceNums() },
+        omni_mode: hasVideo,
+    };
+
+    if (enableTts) {
+        body.tts = { enabled: true, mode: hasVideo ? 'omni' : 'audio_assistant' };
+        body.use_tts_template = true;
+        const refAudio = getTtsRefAudioBase64();
+        if (refAudio) body.tts.ref_audio_data = refAudio;
+    }
+
+    return { body, enableTts };
+}
+
+// ============ Chat 模式（非流式，走 /ws/chat） ============
+async function sendChatMessage(maxTokens) {
+    setGenerating(true);
+    state.generationPhase = 'generating';
+    updateCancelStopButton();
+    addMessageUI('assistant', '...', '', [], -1);
+    const reqId = state.requestId;
+    const startTime = Date.now();
+
+    try {
+        const { body, enableTts } = _buildChatWSBody(maxTokens, false);
+
+        const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new WebSocket(`${wsProto}://${window.location.host}/ws/chat`);
+
+        ws.onopen = () => ws.send(JSON.stringify(body));
+
+        ws.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+
+            if (msg.type === 'prefill_done') {
+                // prefill 完成，等待 generate 结果
+            } else if (msg.type === 'done') {
+                const elapsed = Date.now() - startTime;
+                state.messages.push({ role: 'assistant', content: msg.text, displayText: msg.text });
+                updateLastAssistantMessage(msg.text);
+                updateLastAssistantMeta({
+                    mode: 'chat',
+                    totalMs: elapsed,
+                    processMs: elapsed,
+                    inputTokens: msg.input_tokens || 0,
+                    generatedTokens: msg.generated_tokens || 0,
+                    hasAudio: !!msg.audio_data,
+                    requestId: reqId,
+                });
+
+                const lastMsg = document.querySelectorAll('.message.assistant');
+                const last = lastMsg[lastMsg.length - 1];
+                if (last) last.dataset.msgIndex = state.messages.length - 1;
+
+                if (msg.audio_data) appendAudioPlayer(msg.audio_data);
+                if (msg.recording_session_id && typeof _saveShareUI !== 'undefined') {
+                    _saveShareUI.setSessionId(msg.recording_session_id);
+                }
+                ws.close();
+                setGenerating(false);
+            } else if (msg.type === 'error') {
+                updateLastAssistantMessage(`Error: ${msg.error}`, 'error');
+                ws.close();
+                setGenerating(false);
+            }
+        };
+
+        ws.onerror = () => { updateLastAssistantMessage('WebSocket error', 'error'); setGenerating(false); };
+        ws.onclose = () => { if (state.isGenerating) setGenerating(false); };
+
+    } catch (e) {
+        updateLastAssistantMessage(`Connection error: ${e.message}`, 'error');
+        setGenerating(false);
+    }
+}
+
+function getEnableTts() {
+    if (state.currentView === 'initial') {
+        return document.getElementById('enableTtsInit').checked;
+    }
+    return document.getElementById('enableTts').checked;
+}
+
+function getHDMaxSliceNums() {
+    const el = state.currentView === 'initial'
+        ? document.getElementById('enableHDInit')
+        : document.getElementById('enableHD');
+    return el && el.checked ? 2 : 1;
+}
+
+// ============ 流式音频播放器 ============
+class StreamingAudioPlayer {
+    constructor(sampleRate = 24000) {
+        this.sampleRate = sampleRate;
+        this.audioCtx = getSharedAudioCtx();
+        this.chunks = [];
+        this.totalSamples = 0;
+        this.isPlaying = false;
+        this.currentTime = 0;
+        this.domElement = null;
+        this.streamFinished = false;
+        this._rafId = null;
+        this._nextScheduleTime = 0;
+        this._playOriginWall = 0;
+        this._playOriginOffset = 0;
+        this._scheduledSources = [];
+        this._lastScheduledIdx = -1;
+    }
+
+    get totalDuration() { return this.totalSamples / this.sampleRate; }
+
+    get playbackTime() {
+        if (!this.isPlaying) return this.currentTime;
+        const elapsed = this.audioCtx.currentTime - this._playOriginWall;
+        const scheduledEnd = this._nextScheduleTime - this._playOriginWall;
+        const effectiveElapsed = Math.min(elapsed, scheduledEnd);
+        return Math.min(this._playOriginOffset + effectiveElapsed, this.totalDuration);
+    }
+
+    pushChunk(base64Float32Pcm, spanId) {
+        const binary = atob(base64Float32Pcm);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const float32 = new Float32Array(bytes.buffer);
+        if (float32.length === 0) return;
+        const startTime = this.totalSamples / this.sampleRate;
+        const duration = float32.length / this.sampleRate;
+        this.chunks.push({ float32, startTime, duration, spanId });
+        this.totalSamples += float32.length;
+        if (this.isPlaying) this._scheduleChunk(this.chunks.length - 1);
+        this._updateUI();
+    }
+
+    _scheduleChunk(idx) {
+        const chunk = this.chunks[idx];
+        const buf = this.audioCtx.createBuffer(1, chunk.float32.length, this.sampleRate);
+        buf.getChannelData(0).set(chunk.float32);
+        const src = this.audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(this.audioCtx.destination);
+        const now = this.audioCtx.currentTime;
+        const when = Math.max(now, this._nextScheduleTime);
+        src.start(when);
+        this._nextScheduleTime = when + buf.duration;
+        this._lastScheduledIdx = idx;
+        src.onended = () => {
+            const i = this._scheduledSources.indexOf(src);
+            if (i >= 0) this._scheduledSources.splice(i, 1);
+            if (this._scheduledSources.length === 0 && this.isPlaying) {
+                if (this._lastScheduledIdx >= this.chunks.length - 1) {
+                    this.currentTime = this.totalDuration;
+                    if (this.streamFinished) { this.isPlaying = false; this._stopUILoop(); }
+                    this._updateUI();
+                }
+            }
+        };
+        this._scheduledSources.push(src);
+    }
+
+    play(fromOffset = null) {
+        this._stopAllSources();
+        if (fromOffset !== null) this.currentTime = fromOffset;
+        // 播放结束后重新点击：从头开始（而非 return）
+        if (this.currentTime >= this.totalDuration && this.streamFinished) {
+            this.currentTime = 0;
+        }
+        if (this.totalDuration === 0) return; // 无内容可播
+        const offset = this.currentTime;
+        if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+        this._playOriginWall = this.audioCtx.currentTime;
+        this._playOriginOffset = offset;
+        this._nextScheduleTime = this.audioCtx.currentTime;
+        this.isPlaying = true;
+        let started = false;
+        for (let i = 0; i < this.chunks.length; i++) {
+            const c = this.chunks[i];
+            const cEnd = c.startTime + c.duration;
+            if (cEnd <= offset) continue;
+            if (!started && c.startTime < offset) {
+                const skipSamples = Math.floor((offset - c.startTime) * this.sampleRate);
+                const remaining = c.float32.subarray(skipSamples);
+                if (remaining.length > 0) {
+                    const buf = this.audioCtx.createBuffer(1, remaining.length, this.sampleRate);
+                    buf.getChannelData(0).set(remaining);
+                    const src = this.audioCtx.createBufferSource();
+                    src.buffer = buf;
+                    src.connect(this.audioCtx.destination);
+                    src.start(this._nextScheduleTime);
+                    this._nextScheduleTime += buf.duration;
+                    this._scheduledSources.push(src);
+                    this._lastScheduledIdx = i;
+                }
+                started = true;
+            } else {
+                this._scheduleChunk(i);
+                started = true;
+            }
+        }
+        this._startUILoop();
+    }
+
+    pause() {
+        if (!this.isPlaying) return;
+        this.currentTime = this.playbackTime;
+        this._stopAllSources();
+        this.isPlaying = false;
+        this._stopUILoop();
+        this._updateUI();
+    }
+
+    _stopAllSources() {
+        for (const src of this._scheduledSources) {
+            try { src.onended = null; src.stop(); } catch(e) {}
+        }
+        this._scheduledSources = [];
+    }
+
+    seek(time) {
+        const wasPlaying = this.isPlaying;
+        if (wasPlaying) this._stopAllSources();
+        this.currentTime = Math.max(0, Math.min(time, this.totalDuration));
+        this.isPlaying = false;
+        if (wasPlaying) this.play();
+        this._updateUI();
+    }
+
+    togglePlay() { if (this.isPlaying) this.pause(); else this.play(); }
+    markStreamFinished() { this.streamFinished = true; this._updateUI(); }
+
+    getFullFloat32() {
+        if (this.chunks.length === 0) return null;
+        const merged = new Float32Array(this.totalSamples);
+        let offset = 0;
+        for (const chunk of this.chunks) { merged.set(chunk.float32, offset); offset += chunk.float32.length; }
+        return merged;
+    }
+
+    _fmtTime(s) {
+        if (!isFinite(s) || s < 0) s = 0;
+        return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+    }
+
+    createControl() {
+        const wrap = document.createElement('div');
+        wrap.className = 'audio-ctrl';
+        wrap.innerHTML = `
+            <button class="ac-play" data-ac="toggle">▶</button>
+            <div class="ac-bar" data-ac="bar">
+                <div class="ac-bar-fill"></div>
+                <div class="ac-bar-dot" style="left:0"></div>
+            </div>
+            <span class="ac-time" data-ac="time">0:00 / 0:00</span>
+        `;
+        wrap.querySelector('[data-ac="toggle"]').onclick = () => this.togglePlay();
+        const bar = wrap.querySelector('[data-ac="bar"]');
+        const doSeek = (e) => {
+            const r = bar.getBoundingClientRect();
+            this.seek(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * this.totalDuration);
+        };
+        bar.addEventListener('mousedown', (e) => {
+            doSeek(e);
+            const mv = (e2) => doSeek(e2);
+            const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
+            document.addEventListener('mousemove', mv);
+            document.addEventListener('mouseup', up);
+        });
+        this.domElement = wrap;
+        wrap._streamingPlayer = this;
+        return wrap;
+    }
+
+    _updateUI() {
+        if (!this.domElement) return;
+        const t = this.playbackTime;
+        const total = this.totalDuration;
+        const pct = total > 0 ? Math.min(t / total * 100, 100) : 0;
+        this.domElement.querySelector('[data-ac="toggle"]').textContent = this.isPlaying ? '⏸' : '▶';
+        this.domElement.querySelector('[data-ac="time"]').textContent = `${this._fmtTime(t)} / ${this._fmtTime(total)}`;
+        this.domElement.querySelector('.ac-bar-fill').style.width = `${pct}%`;
+        this.domElement.querySelector('.ac-bar-dot').style.left = `${pct}%`;
+        const stopBtn = this.domElement.querySelector('[data-ac="stop"]');
+        if (stopBtn) stopBtn.style.display = this.streamFinished ? 'none' : '';
+    }
+
+    _startUILoop() {
+        this._stopUILoop();
+        const tick = () => { if (!this.isPlaying) return; this._updateUI(); this._rafId = requestAnimationFrame(tick); };
+        this._rafId = requestAnimationFrame(tick);
+    }
+    _stopUILoop() { if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; } }
+}
+
+function mergeAudioChunksToWav(chunks, sampleRate) {
+    const float32Arrays = chunks.map(b64 => {
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new Float32Array(bytes.buffer);
+    });
+    const totalLength = float32Arrays.reduce((sum, arr) => sum + arr.length, 0);
+    const merged = new Float32Array(totalLength);
+    let offset = 0;
+    for (const arr of float32Arrays) { merged.set(arr, offset); offset += arr.length; }
+    const int16 = new Int16Array(merged.length);
+    for (let i = 0; i < merged.length; i++) {
+        const s = Math.max(-1, Math.min(1, merged[i]));
+        int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    const wavBuffer = new ArrayBuffer(44 + int16.length * 2);
+    const view = new DataView(wavBuffer);
+    const writeString = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + int16.length * 2, true);
+    writeString(8, 'WAVE'); writeString(12, 'fmt ');
+    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+    writeString(36, 'data'); view.setUint32(40, int16.length * 2, true);
+    new Int16Array(wavBuffer, 44).set(int16);
+    const wavBytes = new Uint8Array(wavBuffer);
+    let binary = '';
+    for (let i = 0; i < wavBytes.length; i++) binary += String.fromCharCode(wavBytes[i]);
+    return btoa(binary);
+}
+
+// ============ 下载 / 导出工具 ============
+
+const DL_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
+function createDlBtn(onclick) {
+    const btn = document.createElement('button');
+    btn.className = 'dl-btn';
+    btn.title = 'Download';
+    btn.innerHTML = DL_ICON_SVG;
+    btn.addEventListener('click', (e) => { e.stopPropagation(); onclick(); });
+    return btn;
+}
+
+function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Float32Array PCM → WAV Uint8Array (16-bit PCM)
+ */
+function float32ToWavBytes(float32, sampleRate) {
+    const int16 = new Int16Array(float32.length);
+    for (let i = 0; i < float32.length; i++) {
+        const s = Math.max(-1, Math.min(1, float32[i]));
+        int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    const buf = new ArrayBuffer(44 + int16.length * 2);
+    const v = new DataView(buf);
+    const ws = (off, str) => { for (let i = 0; i < str.length; i++) v.setUint8(off + i, str.charCodeAt(i)); };
+    ws(0, 'RIFF'); v.setUint32(4, 36 + int16.length * 2, true);
+    ws(8, 'WAVE'); ws(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    ws(36, 'data'); v.setUint32(40, int16.length * 2, true);
+    new Int16Array(buf, 44).set(int16);
+    return new Uint8Array(buf);
+}
+
+function downloadAudioBuffer(audioBuffer, filename) {
+    const pcm = audioBuffer.getChannelData(0);
+    const wavBytes = float32ToWavBytes(pcm, audioBuffer.sampleRate);
+    triggerDownload(new Blob([wavBytes], { type: 'audio/wav' }), filename);
+}
+
+function downloadFloat32AsWav(float32, sampleRate, filename) {
+    const wavBytes = float32ToWavBytes(float32, sampleRate);
+    triggerDownload(new Blob([wavBytes], { type: 'audio/wav' }), filename);
+}
+
+function downloadBase64AsFile(base64Data, filename, mimeType) {
+    const raw = atob(base64Data);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    triggerDownload(new Blob([bytes], { type: mimeType }), filename);
+}
+
+function base64ToUint8Array(b64) {
+    const raw = atob(b64);
+    const arr = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+}
+
+/**
+ * 导出整个对话为 .msgpack 文件（兼容 msgpack-audio-viewer）
+ *
+ * 格式：
+ * { messages: [ { role, content: [ { type, text?, audio?, image?, format? } ] } ] }
+ * 其中 audio/image 字段为原始 bytes (Uint8Array)
+ */
+async function exportConversation() {
+    const { encode } = await import('/static/lib/msgpack.mjs');
+
+    const exportMessages = [];
+    const messageDivs = document.querySelectorAll('#messages .message');
+    const divByIndex = {};
+    messageDivs.forEach(d => { divByIndex[d.dataset.msgIndex] = d; });
+
+    // System message
+    if (state.systemContentList && state.systemContentList.length > 0) {
+        const items = [];
+        for (const it of state.systemContentList) {
+            if (it.type === 'text' && it.text) {
+                items.push({ type: 'text', text: it.text });
+            } else if (it.type === 'audio' && it.data) {
+                const pcm = base64ToUint8Array(it.data);
+                const f32 = new Float32Array(pcm.buffer);
+                items.push({ type: 'audio', audio: float32ToWavBytes(f32, 16000), format: 'wav' });
+            }
+        }
+        if (items.length > 0) exportMessages.push({ role: 'system', content: items });
+    }
+
+    // Conversation messages
+    for (let i = 0; i < state.messages.length; i++) {
+        const msg = state.messages[i];
+        const div = divByIndex[String(i)];
+        const items = [];
+
+        if (msg.role === 'user') {
+            if (Array.isArray(msg.content)) {
+                for (const it of msg.content) {
+                    if (it.type === 'text' && it.text) {
+                        items.push({ type: 'text', text: it.text });
+                    } else if (it.type === 'audio' && it.data) {
+                        const pcm = base64ToUint8Array(it.data);
+                        const f32 = new Float32Array(pcm.buffer);
+                        items.push({ type: 'audio', audio: float32ToWavBytes(f32, 16000), format: 'wav' });
+                    } else if (it.type === 'image' && it.data) {
+                        items.push({ type: 'image', image: base64ToUint8Array(it.data), format: 'png' });
+                    } else if (it.type === 'video' && it.data) {
+                        items.push({ type: 'video', video: base64ToUint8Array(it.data), format: 'mp4' });
+                    }
+                }
+            } else if (typeof msg.content === 'string' && msg.content) {
+                items.push({ type: 'text', text: msg.content });
+            }
+        } else if (msg.role === 'assistant') {
+            let audioWavBytes = null;
+            if (div) {
+                const miniPlayer = div.querySelector('.mini-player');
+                if (miniPlayer && miniPlayer._audioBuffer) {
+                    const buf = miniPlayer._audioBuffer;
+                    audioWavBytes = float32ToWavBytes(buf.getChannelData(0), buf.sampleRate);
+                }
+                if (!audioWavBytes) {
+                    const audioCtrl = div.querySelector('.audio-ctrl');
+                    if (audioCtrl && audioCtrl._streamingPlayer) {
+                        const sp = audioCtrl._streamingPlayer;
+                        const f32 = sp.getFullFloat32();
+                        if (f32) audioWavBytes = float32ToWavBytes(f32, sp.sampleRate);
+                    }
+                }
+            }
+            if (msg.displayText && audioWavBytes) {
+                items.push({ type: 'text_and_audio', text: msg.displayText, audio: audioWavBytes, format: 'wav' });
+            } else if (msg.displayText) {
+                items.push({ type: 'text', text: msg.displayText });
+            } else if (audioWavBytes) {
+                items.push({ type: 'text_and_audio', text: '', audio: audioWavBytes, format: 'wav' });
+            }
+        }
+
+        if (items.length > 0) exportMessages.push({ role: msg.role, content: items });
+    }
+
+    if (exportMessages.length === 0) { alert('No messages to export.'); return; }
+
+    const encoded = encode({ messages: exportMessages });
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    triggerDownload(new Blob([encoded], { type: 'application/x-msgpack' }), `conversation_${ts}.msgpack`);
+}
+
+/**
+ * 全局共享 AudioContext（避免浏览器 AudioContext 数量限制导致播放失败）
+ */
+let _sharedAudioCtx = null;
+function getSharedAudioCtx() {
+    if (!_sharedAudioCtx || _sharedAudioCtx.state === 'closed') {
+        _sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return _sharedAudioCtx;
+}
+
+/**
+ * 创建迷你音频播放器
+ * @param {string} audioBase64 - base64 编码的音频数据
+ * @param {number} [rawPcmSampleRate=24000] - 当数据为 raw PCM float32 时使用的采样率
+ *   User 录音 = 16000, AI TTS streaming = 24000, AI chat = WAV格式(自动解析)
+ */
+function createMiniPlayer(audioBase64, rawPcmSampleRate = 24000) {
+    const wrap = document.createElement('div');
+    wrap.className = 'mini-player';
+    const btn = document.createElement('button'); btn.className = 'mp-btn'; btn.textContent = '▶';
+    const bar = document.createElement('div'); bar.className = 'mp-bar';
+    const barFill = document.createElement('div'); barFill.className = 'mp-bar-fill';
+    const barDot = document.createElement('div'); barDot.className = 'mp-bar-dot'; barDot.style.left = '0';
+    bar.appendChild(barFill); bar.appendChild(barDot);
+    const timeEl = document.createElement('span'); timeEl.className = 'mp-time'; timeEl.textContent = '0:00';
+    wrap.appendChild(btn); wrap.appendChild(bar); wrap.appendChild(timeEl);
+
+    const audioCtx = getSharedAudioCtx();
+    const raw = atob(audioBase64);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    let audioBuffer = null, source = null, isPlaying = false, startWall = 0, startOffset = 0, raf = null;
+    const fmt = (s) => `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+
+    // 尝试作为 WAV/标准格式解码（Chat 模式返回 WAV），失败则按 raw PCM float32 处理
+    audioCtx.decodeAudioData(bytes.buffer.slice(0)).then(buf => {
+        audioBuffer = buf; timeEl.textContent = `0:00 / ${fmt(buf.duration)}`;
+        wrap._audioBuffer = buf;
+    }).catch(() => {
+        const float32 = new Float32Array(bytes.buffer);
+        audioBuffer = audioCtx.createBuffer(1, float32.length, rawPcmSampleRate);
+        audioBuffer.getChannelData(0).set(float32);
+        timeEl.textContent = `0:00 / ${fmt(audioBuffer.duration)}`;
+        wrap._audioBuffer = audioBuffer;
+    });
+
+    function getTime() { return isPlaying ? Math.min(startOffset + (audioCtx.currentTime - startWall), audioBuffer ? audioBuffer.duration : 0) : startOffset; }
+    function play(from) {
+        stopSource(); if (!audioBuffer) return;
+        // 确保 AudioContext 未被浏览器 suspend（需要用户交互后恢复）
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (from !== undefined) startOffset = from;
+        if (startOffset >= audioBuffer.duration) startOffset = 0;
+        source = audioCtx.createBufferSource(); source.buffer = audioBuffer; source.connect(audioCtx.destination);
+        source.onended = () => { if (isPlaying) { startOffset = audioBuffer.duration; isPlaying = false; updateUI(); } };
+        source.start(0, startOffset); startWall = audioCtx.currentTime; isPlaying = true; tick();
+    }
+    function stopSource() { if (source) { try { source.onended = null; source.stop(); } catch(e) {} source = null; } isPlaying = false; if (raf) { cancelAnimationFrame(raf); raf = null; } }
+    function toggle() { if (isPlaying) { startOffset = getTime(); stopSource(); updateUI(); } else play(); }
+    function updateUI() {
+        const t = getTime(); const dur = audioBuffer ? audioBuffer.duration : 0; const pct = dur > 0 ? (t / dur) * 100 : 0;
+        btn.textContent = isPlaying ? '⏸' : '▶'; barFill.style.width = `${pct}%`; barDot.style.left = `${pct}%`;
+        timeEl.textContent = `${fmt(t)} / ${fmt(dur)}`;
+    }
+    function tick() { if (!isPlaying) return; updateUI(); raf = requestAnimationFrame(tick); }
+    btn.onclick = toggle;
+    bar.addEventListener('mousedown', (e) => {
+        if (!audioBuffer) return;
+        const doSeek = (ev) => { const r = bar.getBoundingClientRect(); play(Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) * audioBuffer.duration); };
+        doSeek(e);
+        const mv = (ev) => doSeek(ev); const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
+        document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+    });
+    return wrap;
+}
+
+function appendAudioPlayer(audioBase64) {
+    const msgs = document.querySelectorAll('.message.assistant');
+    const last = msgs[msgs.length - 1];
+    if (!last) return;
+    const body = last.querySelector('.msg-body');
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-ci-audio';
+    wrap.appendChild(createMiniPlayer(audioBase64));
+    const dlBtn = createDlBtn(() => {
+        const mp = wrap.querySelector('.mini-player');
+        if (mp && mp._audioBuffer) downloadAudioBuffer(mp._audioBuffer, 'ai_audio.wav');
+    });
+    wrap.appendChild(dlBtn);
+    body.appendChild(wrap);
+}
+
+function appendStreamingAudioControl(player) {
+    const msgs = document.querySelectorAll('.message.assistant');
+    const last = msgs[msgs.length - 1];
+    if (!last) return;
+    const body = last.querySelector('.msg-body');
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-ci-audio';
+    wrap.appendChild(player.createControl());
+    const dlBtn = createDlBtn(() => {
+        const f32 = player.getFullFloat32();
+        if (f32) downloadFloat32AsWav(f32, player.sampleRate, 'ai_audio.wav');
+    });
+    wrap.appendChild(dlBtn);
+    body.appendChild(wrap);
+}
+
+// ============ Streaming 模式（走 /ws/chat） ============
+async function sendStreamingMessage(maxTokens) {
+    setGenerating(true);
+    state.generationPhase = 'generating';
+    updateCancelStopButton();
+    addMessageUI('assistant', '', '', [], -1);
+    const reqId = state.requestId;
+
+    const startTime = Date.now();
+    let ttfsTime = null;
+    let fullText = '';
+
+    const { body, enableTts } = _buildChatWSBody(maxTokens, true);
+
+    let streamAudioPlayer = null;
+    let controlCreated = false;
+    if (enableTts) {
+        streamAudioPlayer = new StreamingAudioPlayer(24000);
+    }
+
+    try {
+        const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new WebSocket(`${wsProto}://${window.location.host}/ws/chat`);
+
+        ws.onopen = () => ws.send(JSON.stringify(body));
+
+        ws.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+
+            if (msg.type === 'prefill_done') {
+                // prefill 完成
+            } else if (msg.type === 'chunk') {
+                if (ttfsTime === null) ttfsTime = Date.now() - startTime;
+                if (msg.text_delta) {
+                    fullText += msg.text_delta;
+                    updateLastAssistantMessage(fullText);
+                }
+                if (msg.audio_data && streamAudioPlayer) {
+                    streamAudioPlayer.pushChunk(msg.audio_data, null);
+                    if (!controlCreated) {
+                        appendStreamingAudioControl(streamAudioPlayer);
+                        streamAudioPlayer.play(0);
+                        controlCreated = true;
+                    }
+                }
+            } else if (msg.type === 'done') {
+                const elapsed = Date.now() - startTime;
+                state.messages.push({ role: 'assistant', content: fullText || msg.text, displayText: fullText || msg.text });
+                if (fullText) {
+                    updateLastAssistantMeta({
+                        mode: 'streaming',
+                        totalMs: elapsed,
+                        ttfsMs: ttfsTime,
+                        processMs: elapsed,
+                        inputTokens: msg.input_tokens || 0,
+                        generatedTokens: msg.generated_tokens || 0,
+                        requestId: reqId,
+                    });
+                }
+                if (streamAudioPlayer) streamAudioPlayer.markStreamFinished();
+
+                const lastMsg = document.querySelectorAll('.message.assistant');
+                const last = lastMsg[lastMsg.length - 1];
+                if (last) last.dataset.msgIndex = state.messages.length - 1;
+
+                if (msg.recording_session_id && typeof _saveShareUI !== 'undefined') {
+                    _saveShareUI.setSessionId(msg.recording_session_id);
+                }
+                ws.close();
+                setGenerating(false);
+            } else if (msg.type === 'error') {
+                updateLastAssistantMessage(`Error: ${msg.error}`, 'error');
+                ws.close();
+                setGenerating(false);
+            }
+        };
+
+        ws.onerror = () => { updateLastAssistantMessage('WebSocket error', 'error'); setGenerating(false); };
+        ws.onclose = () => { if (state.isGenerating) setGenerating(false); };
+
+    } catch (e) {
+        updateLastAssistantMessage(`Connection error: ${e.message}`, 'error');
+        setGenerating(false);
+    }
+}
+
+// ============ 启动 ============
+init();
+</script>
+
+<!-- Save & Share -->
+<div id="save-share-container" style="position:fixed;bottom:16px;right:16px;z-index:100;max-width:300px;"></div>
+<script src="/static/shared/save-share.js"></script>
+<script>
+const _saveShareUI = new SaveShareUI({ containerId: 'save-share-container', appType: 'streaming' });
+</script>
+<script type="module">
+import { initNav } from '/static/shared/app-nav.js';
+initNav('turnbased');
+</script>
+<script type="module">
+import { initFaqSidebar } from '/static/shared/faq-sidebar.js';
+initFaqSidebar('turnbased');
+</script>
+</body>
+</html>
