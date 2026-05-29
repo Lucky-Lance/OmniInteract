@@ -36,11 +36,11 @@ This repository contains the **inference adapters** that drive the four evaluate
 
 ## Evaluated Models
 
-We evaluate four representative real-time omnimodal models. All four will be available as inference adapters in this repository; the AURA adapter is in the process of being merged in (reference code at [`aurateam2026/AURA`](https://github.com/aurateam2026/AURA)).
+We evaluate four representative real-time omnimodal models, all available as inference adapters in this repository. The AURA adapter lives on the [`aura`](https://github.com/Lucky-Lance/OmniInteract/tree/aura) branch (it ships its own ASR + TTS + vLLM service stack); the other three are on `main`.
 
 | Model                            | Adapter                                                                                                                                                              | Backend            |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| **AURA**                         | _Coming soon to this repository_ (see [`aurateam2026/AURA`](https://github.com/aurateam2026/AURA) for reference)                                                     | local GPU          |
+| **AURA**                         | [`launch_batch_aura.sh`](https://github.com/Lucky-Lance/OmniInteract/blob/aura/launch_batch_aura.sh) on the [`aura`](https://github.com/Lucky-Lance/OmniInteract/tree/aura) branch                  | local GPU          |
 | **Gemini 2.5 Flash Live**        | [`generative-ai/.../run_with_video_file.py`](generative-ai/gemini/multimodal-live-api/native-audio-websocket-demo-apps/plain-js-python-sdk-demo-app/run_with_video_file.py) | Google / Vertex AI |
 | **MiniCPM-o 4.5**                | [`MiniCPM-o-Demo/run_with_video_file.py`](MiniCPM-o-Demo/run_with_video_file.py)                                                                                     | local GPU          |
 | **Qwen3.5-Omni Flash Realtime**  | [`alibabacloud-bailian-speech-demo/.../run_with_video_file.py`](alibabacloud-bailian-speech-demo/samples/conversation/omni/python/run_with_video_file.py)            | DashScope API      |
@@ -74,7 +74,15 @@ Every adapter implements pseudo-online inference using the model's **official SD
 
 ### AURA
 
-The AURA inference adapter is being merged into this repository. In the meantime, refer to [`aurateam2026/AURA`](https://github.com/aurateam2026/AURA) for installation and weights; AURA is evaluated on the same `data/` layout described below.
+The AURA inference adapter lives on the [`aura`](https://github.com/Lucky-Lance/OmniInteract/tree/aura) branch (it bundles its own ASR + TTS + vLLM streaming service stack, with installation and weight details in that branch's `README.md`). It is evaluated on the same `data/` layout described below:
+
+```bash
+git checkout aura
+MODEL_PATH=/path/to/AURA-8b \
+ASR_MODEL=/path/to/Qwen3-ASR-1.7B \
+TTS_MODEL=/path/to/Qwen3-TTS-12Hz-1.7B-Base \
+bash launch_batch_aura.sh
+```
 
 ### Gemini 2.5 Flash Live
 
@@ -187,11 +195,11 @@ outputs/<model>/<subset>/<video_name>/
 ```
 
 - **`output.wav`**: 24 kHz, mono, 16-bit PCM. Duration matches the input video (silence-padded to align). On interruption, the pending buffer is dropped and audio goes silent; playback resumes when the next response arrives.
-- **`wav_transcript.json`**: format compatible with `asr.py`'s `output.json`. Text source is the model's native output (100% accurate, not ASR). Time source is frame-level WAV alignment (30 ms precision).
+- **`wav_transcript.json`**: format compatible with the `output.json` schema produced by [`eval/data_prep/ASR.py`](eval/data_prep/ASR.py). Text source is the model's native output (100% accurate, not ASR). Time source is frame-level WAV alignment (30 ms precision).
 
 ## Batch Inference
 
-All three orchestrators auto-discover videos under `data/1q1a/`, `data/1q1a_math/`, and `data/1qna/videos_bench/`. They support resume-from-crash via `.done` marker files in each output directory.
+The three `main`-branch orchestrators (Qwen / Gemini / MiniCPM-o) auto-discover videos under `data/1q1a/`, `data/1q1a_math/`, and `data/1qna/videos_bench/`. They support resume-from-crash via `.done` marker files in each output directory. AURA has its own orchestrator on the `aura` branch (shown last below).
 
 ```bash
 # Qwen3.5-Omni Flash Realtime
@@ -204,6 +212,10 @@ bash launch_batch_gemini.sh --workers 10
 
 # MiniCPM-o 4.5 (multi-GPU)
 bash launch_batch_minicpmo.sh --model_path /path/to/MiniCPM-o-4_5 --num_gpus 8
+
+# AURA (on the `aura` branch; spins up its own ASR + TTS + vLLM stack)
+git checkout aura
+MODEL_PATH=/path/to/AURA-8b bash launch_batch_aura.sh
 ```
 
 ## Evaluation
@@ -350,7 +362,7 @@ System dependencies: `ffmpeg` and `ffprobe` must be on `PATH`.
 
 ## Upstream Sources
 
-- [aurateam2026/AURA](https://github.com/aurateam2026/AURA) — AURA model weights and reference inference code
+- [AURA (`aura` branch)](https://github.com/Lucky-Lance/OmniInteract/tree/aura) — AURA streaming inference adapter (ASR + TTS + vLLM); model weights at [aurateam/AURA](https://huggingface.co/aurateam/AURA)
 - [aliyun/alibabacloud-bailian-speech-demo](https://github.com/aliyun/alibabacloud-bailian-speech-demo) — DashScope Qwen-Omni SDK
 - [GoogleCloudPlatform/generative-ai](https://github.com/GoogleCloudPlatform/generative-ai) — Google Gemini Live demos
 - [openbmb/MiniCPM-o-4_5](https://huggingface.co/openbmb/MiniCPM-o-4_5) — MiniCPM-o 4.5 model weights
