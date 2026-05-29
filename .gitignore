@@ -1,0 +1,32 @@
+# Large binary files
+*.whl
+*.mp4
+*.mp3
+*.wav
+
+# Keep the TTS reference voice (needed by launch_batch_aura.sh / warmup.py)
+!shuhan.mp3
+
+# Log files
+*.log
+logs/
+tts_latency.log
+vocab_debug.log
+logs_startall.log
+
+# Debug/runtime outputs
+debug_context.jsonl
+eval_outputs/
+real_time_captured_audio/
+real_time_captured_video/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Git submodule data (already tracked separately)
+Full-Duplex-Bench-Omni/
+*.zip
+outputs/*
+data/*
