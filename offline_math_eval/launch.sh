@@ -19,7 +19,8 @@ MODEL_PATH="${1:-/path/to/MiniCPM-o-4_5}"
 OUTPUT_DIR="offline_math_eval/results"
 MANIFEST="offline_math_eval/eval_manifest.json"
 
-GPU_IDS=(0 1)
+GPU_IDS_ARG="${GPU_IDS:-0 1 2 3 4 5 6 7 8 9}"
+read -r -a GPU_IDS <<< "$GPU_IDS_ARG"
 NUM_WORKERS=${#GPU_IDS[@]}
 
 mkdir -p "$OUTPUT_DIR"

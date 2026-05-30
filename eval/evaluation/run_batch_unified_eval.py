@@ -159,6 +159,17 @@ def _model_json_from_output_dir(output_dir: Path, model_json_name: str = "") -> 
     return None
 
 
+def _sample_id_from_gt(repo: Path, gt: Path, out_dir: Optional[Path], video: str) -> str:
+    """Create a collision-free sample id for auto-inferred batch-summary items."""
+    name = out_dir.name if out_dir is not None else Path(video).stem
+    try:
+        rel = gt.resolve().relative_to((repo / "data").resolve())
+        subset = rel.parts[0] if rel.parts else ""
+    except Exception:
+        subset = ""
+    return f"{subset}__{name}" if subset else name
+
+
 def _items_from_batch_summary(path: Path, repo: Path, output_root: Optional[Path], model_json_name: str = "") -> List[Dict[str, Any]]:
     root = load_json(path)
     rows = root.get("results", []) if isinstance(root, dict) else []
@@ -174,7 +185,7 @@ def _items_from_batch_summary(path: Path, repo: Path, output_root: Optional[Path
         if gt is None or model_json is None:
             out.append({"status": "missing_input", "video": video, "scene_type": scene, "gt_json": str(gt) if gt else "", "model_json": str(model_json) if model_json else ""})
             continue
-        sample_id = out_dir.name if out_dir is not None else Path(video).stem
+        sample_id = _sample_id_from_gt(repo, gt, out_dir, video)
         out.append(
             {
                 "status": "ready",

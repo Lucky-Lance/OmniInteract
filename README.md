@@ -271,6 +271,7 @@ python eval/evaluation/summarize_unified_eval.py \
   --model_eval_dir gemini=outputs/gemini/unified_eval \
   --model_eval_dir minicpmo=outputs/minicpmo/unified_eval \
   --model_eval_dir qwen=outputs/qwen/unified_eval \
+  --offline_math_json offline_math_eval/offline_quality_summary.json \
   --report_md outputs/unified_eval_report.md
 ```
 
@@ -300,6 +301,15 @@ bash offline_math_eval/launch.sh /path/to/MiniCPM-o-4_5
 # Step 3: merge results
 python offline_math_eval/merge_results.py
 # Output: offline_math_eval/all_results.json
+
+# Step 4: score offline answers with the LLM judge
+export JUDGE_API_KEY=sk-...
+python offline_math_eval/score_offline_results.py \
+  --judge_api_url https://api.openai.com/v1/chat/completions \
+  --input offline_math_eval/all_results.json \
+  --output offline_math_eval/offline_quality_summary.json \
+  --num_workers 4
+# Output: offline_math_eval/offline_quality_summary.json
 ```
 
 ## Repository Layout
